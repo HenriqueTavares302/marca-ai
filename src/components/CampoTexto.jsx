@@ -17,6 +17,7 @@ function CampoTexto({
   autoCompletar,
   limite,
   multilinha = false,
+  acao,
 }) {
   const idGerado = useId()
   const idDoCampo = id || idGerado
@@ -39,9 +40,9 @@ function CampoTexto({
     autoComplete: autoCompletar,
     'aria-invalid': erro ? true : undefined,
     'aria-describedby': descricoes.length > 0 ? descricoes.join(' ') : undefined,
-    className: `rounded-xl border-2 bg-superficie px-4 text-texto placeholder:text-texto-suave ${corDaBorda} ${
+    className: `w-full rounded-xl border-2 bg-superficie px-4 text-texto placeholder:text-texto-suave ${corDaBorda} ${
       multilinha ? 'min-h-24 py-3' : 'min-h-12'
-    }`,
+    } ${acao ? 'pr-14' : ''}`,
   }
 
   return (
@@ -50,7 +51,10 @@ function CampoTexto({
         {rotulo}
         {opcional && <span className="font-normal text-texto-suave"> (opcional)</span>}
       </label>
-      {multilinha ? <textarea rows={3} {...propriedades} /> : <input type={tipo} {...propriedades} />}
+      <div className="relative">
+        {multilinha ? <textarea rows={3} {...propriedades} /> : <input type={tipo} {...propriedades} />}
+        {acao && <div className="absolute inset-y-0 right-0 flex items-center">{acao}</div>}
+      </div>
       {ajuda && (
         <p id={idAjuda} className="text-texto-suave">
           {ajuda}

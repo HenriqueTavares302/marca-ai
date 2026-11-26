@@ -10,6 +10,7 @@ import { buscarSalao, listarHorarioDoSalao, listarServicosPopulares } from '../.
 import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
 import { partesEmSaoPaulo } from '../../utils/fuso.js'
 import { agruparHorariosDaSemana, situacaoDoSalao } from '../../utils/horarios.js'
+import { profissionalLogado } from '../../utils/sessao.js'
 
 function StatusDoSalao({ semana, agora }) {
   const situacao = situacaoDoSalao(semana, agora)
@@ -170,7 +171,7 @@ function Inicio() {
 
       <footer className="flex justify-center">
         <Link
-          to="/salao"
+          to={profissionalLogado() === null ? '/salao/entrar' : '/salao'}
           className="flex min-h-12 items-center gap-2 px-4 text-texto-suave underline underline-offset-4"
         >
           <Lock className="size-4" aria-hidden="true" />

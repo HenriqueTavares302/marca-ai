@@ -17,6 +17,7 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 - Código simples e direto, que um iniciante consiga ler: JavaScript (não TypeScript), componentes funcionais, `useState`/`useEffect`, nada de bibliotecas ou padrões avançados sem necessidade.
 - Nomes de arquivos, componentes, variáveis e textos da tela em português.
 - Meus agendamentos sem login: a tela NUNCA busca agendamentos por um celular digitado (qualquer um veria os horários de outra pessoa). Até a issue #23 (login), ela mostra só os agendamentos criados neste aparelho: os ids ficam no `localStorage` ao confirmar, e `listarMeusAgendamentos` só devolve agendamentos do banco local do próprio aparelho.
+- Entrada do profissional (até a issue #23): login de TESTE em `/salao/entrar`, avisado na própria tela. Qualquer e-mail válido e senha com 6 ou mais caracteres entram; nenhuma senha fica no código nem é guardada. A sessão (`src/utils/sessao.js`: `entrar`, `sair`, `profissionalLogado`) guarda só o id do profissional de exemplo (o dono) no `localStorage`. Todas as rotas `/salao/*` exigem sessão; sem ela, vão para `/salao/entrar` e, depois de entrar, voltam para a página pedida (só caminhos que começam com `/salao`). Na #23 só muda o que está dentro dessas funções.
 - Nunca colocar chaves secretas no código. Só `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no `.env` (que não vai para o Git).
 - Dados de exemplo nunca usam telefones, e-mails ou documentos que possam ser reais: telefones sempre com DDD 00, e-mails @exemplo.com.
 
