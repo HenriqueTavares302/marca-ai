@@ -17,31 +17,33 @@ export function situacaoDoSalao(semana, agora) {
   const agoraEmSaoPaulo = partesEmSaoPaulo(agora)
   const hoje = agoraEmSaoPaulo.diaSemana
   const horaAgora = agoraEmSaoPaulo.hora + ':00'
-  const horarioDeHoje = semana[hoje]
+  const intervalosDeHoje = semana[hoje] || []
 
-  if (horarioDeHoje && horaAgora >= horarioDeHoje.inicio && horaAgora < horarioDeHoje.fim) {
-    return { aberto: true, texto: 'Aberto agora', detalhe: 'fecha às ' + formatarHora(horarioDeHoje.fim) }
+  const atual = intervalosDeHoje.find((intervalo) => horaAgora >= intervalo.inicio && horaAgora < intervalo.fim)
+  if (atual) {
+    return { aberto: true, texto: 'Aberto agora', detalhe: 'fecha às ' + formatarHora(atual.fim) }
   }
 
-  if (horarioDeHoje && horaAgora < horarioDeHoje.inicio) {
-    return { aberto: false, texto: 'Fechado agora', detalhe: 'abre hoje às ' + formatarHora(horarioDeHoje.inicio) }
+  const maisTarde = intervalosDeHoje.find((intervalo) => horaAgora < intervalo.inicio)
+  if (maisTarde) {
+    return { aberto: false, texto: 'Fechado agora', detalhe: 'abre hoje às ' + formatarHora(maisTarde.inicio) }
   }
 
   for (let dias = 1; dias <= 7; dias++) {
     const dia = (hoje + dias) % 7
-    const horario = semana[dia]
-    if (horario) {
+    const intervalos = semana[dia]
+    if (intervalos && intervalos.length > 0) {
       const quando = dias === 1 ? 'amanhã' : nomesDosDias[dia]
-      return { aberto: false, texto: 'Fechado agora', detalhe: 'abre ' + quando + ' às ' + formatarHora(horario.inicio) }
+      return { aberto: false, texto: 'Fechado agora', detalhe: 'abre ' + quando + ' às ' + formatarHora(intervalos[0].inicio) }
     }
   }
 
   return { aberto: false, texto: 'Fechado', detalhe: 'sem horários cadastrados' }
 }
 
-function textoDoHorario(horario) {
-  if (!horario) return 'Fechado'
-  return formatarHora(horario.inicio) + ' às ' + formatarHora(horario.fim)
+function textoDoHorario(intervalos) {
+  if (!intervalos || intervalos.length === 0) return 'Fechado'
+  return intervalos.map((intervalo) => formatarHora(intervalo.inicio) + ' às ' + formatarHora(intervalo.fim)).join(' e ')
 }
 
 export function agruparHorariosDaSemana(semana) {

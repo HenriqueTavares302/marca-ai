@@ -2,7 +2,7 @@ import { formatarPreco } from './formatos.js'
 import { partesEmSaoPaulo } from './fuso.js'
 import { minutosDaHora } from './horariosLivres.js'
 
-const ordemDosTipos = { bloqueio: 0, atendimento: 1, livre: 2 }
+const ordemDosTipos = { bloqueio: 0, intervalo: 0, atendimento: 1, livre: 2 }
 
 function minutosNoDia(dataIso, data) {
   const partes = partesEmSaoPaulo(dataIso)
@@ -33,7 +33,34 @@ export function montarLinhaDoTempo({ data, agendamentos, bloqueios, turnos, prof
       fim: minutosNoDia(bloqueio.fim, data),
       profissionalId: bloqueio.profissional_id,
       motivo: bloqueio.motivo || 'Bloqueado',
+      diaInteiro: minutosNoDia(bloqueio.inicio, data) === 0 && minutosNoDia(bloqueio.fim, data) === 24 * 60,
     })
+  }
+
+  for (const profissional of profissionais) {
+    const turnosDoProfissional = turnos
+      .filter((turno) => turno.profissional_id === profissional.id)
+      .sort((a, b) => minutosDaHora(a.inicio) - minutosDaHora(b.inicio))
+    for (let indice = 1; indice < turnosDoProfissional.length; indice++) {
+      const inicio = minutosDaHora(turnosDoProfissional[indice - 1].fim)
+      const fim = minutosDaHora(turnosDoProfissional[indice].inicio)
+      if (fim <= inicio) continue
+      const coberto = bloqueios.some(
+        (bloqueio) =>
+          bloqueio.profissional_id === profissional.id &&
+          minutosNoDia(bloqueio.inicio, data) <= inicio &&
+          minutosNoDia(bloqueio.fim, data) >= fim,
+      )
+      if (coberto) continue
+      itens.push({
+        tipo: 'intervalo',
+        chave: 'intervalo-' + profissional.id + '-' + inicio,
+        inicio,
+        fim,
+        profissionalId: profissional.id,
+        motivo: 'Intervalo',
+      })
+    }
   }
 
   for (const profissional of profissionais) {

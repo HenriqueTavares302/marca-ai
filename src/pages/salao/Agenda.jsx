@@ -83,7 +83,7 @@ function ItemDeAtendimento({ item, mostrarProfissional, aoAbrir }) {
 }
 
 function ItemSimples({ item, nomeDoProfissional, data }) {
-  const horario = formatarMinutos(item.inicio) + ' às ' + formatarMinutos(item.fim)
+  const horario = item.diaInteiro ? 'Dia inteiro' : formatarMinutos(item.inicio) + ' às ' + formatarMinutos(item.fim)
   const quem = nomeDoProfissional ? ' · ' + nomeDoProfissional : ''
 
   if (item.tipo === 'livre') {
@@ -104,7 +104,7 @@ function ItemSimples({ item, nomeDoProfissional, data }) {
     )
   }
 
-  const Icone = item.motivo === 'Almoço' ? Coffee : CalendarOff
+  const Icone = item.tipo === 'intervalo' ? Coffee : CalendarOff
   return (
     <p className="flex min-h-12 items-center gap-2 rounded-2xl bg-borda px-4 text-texto">
       <Icone className="size-5 shrink-0" aria-hidden="true" />

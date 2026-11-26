@@ -12,7 +12,7 @@ import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
 import {
-  listarDiasDeAtendimento,
+  listarDatasAbertas,
   listarHorariosLivres,
   listarProfissionaisComServicos,
   listarServicosComVariacoes,
@@ -28,7 +28,7 @@ import {
   salvarProfissional,
 } from '../../utils/agendamento.js'
 import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
-import { diaDaSemana, hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import { hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 import { mostrarHorarioEscolhido, rolarFaixaParaODia } from '../../utils/rolagem.js'
 
@@ -37,7 +37,7 @@ const quantidadeDeDias = 21
 async function buscarDiaComVaga(dias, aPartirDe, dados) {
   for (let indice = aPartirDe; indice < dias.length; indice++) {
     const data = dias[indice]
-    if (!dados.diasAbertos.includes(diaDaSemana(data))) continue
+    if (!dados.diasAbertos.includes(data)) continue
     const livres = await listarHorariosLivres(
       data,
       dados.profissionalId,
@@ -91,7 +91,7 @@ function AgendarHorario() {
       const dias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
       const profissionalId = profissional ? profissional.id : null
       const servicoIds = resumo.itens.map((item) => item.servico.id)
-      const diasAbertos = await listarDiasDeAtendimento(profissionalId, servicoIds)
+      const diasAbertos = await listarDatasAbertas(profissionalId, servicoIds, dias)
       const remarcacao = carregarRemarcacao()
       const novosDados = {
         resumo,
@@ -141,7 +141,7 @@ function AgendarHorario() {
         dataInicial = await buscarDiaComVaga(dias, 0, novosDados)
       }
       if (!dataInicial) {
-        dataInicial = dias.find((data) => diasAbertos.includes(diaDaSemana(data))) || dias[0]
+        dataInicial = dias.find((data) => diasAbertos.includes(data)) || dias[0]
       }
 
       setDados(novosDados)
@@ -253,7 +253,7 @@ function AgendarHorario() {
                 key={data}
                 data={data}
                 hoje={dados.hoje}
-                aberto={dados.diasAbertos.includes(diaDaSemana(data))}
+                aberto={dados.diasAbertos.includes(data)}
                 selecionado={data === dataSelecionada}
                 aoEscolher={() => {
                   setSemVagaNaFaixa(false)

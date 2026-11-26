@@ -1,17 +1,24 @@
 import { agendamento_servicos as itensDeExemplo } from './agendamento_servicos.js'
 import { agendamentos as agendamentosDeExemplo } from './agendamentos.js'
 import { gravarBancoLocal, lerBancoLocal } from './armazenamentoLocal.js'
-import { bloqueios } from './bloqueios.js'
+import { bloqueios as bloqueiosDeExemplo } from './bloqueios.js'
 import { clientes as clientesDeExemplo } from './clientes.js'
 import { mesmoDia } from './datas.js'
-import { horarios_trabalho } from './horarios_trabalho.js'
+import { horarios_trabalho as horariosDeExemplo } from './horarios_trabalho.js'
 import { profissional_servicos as ligacoesDeExemplo } from './profissional_servicos.js'
 import { profissionais } from './profissionais.js'
 import { salao } from './salao.js'
 import { servico_variacoes as variacoesDeExemplo } from './servico_variacoes.js'
 import { categorias as categoriasDeExemplo, servicos as servicosDeExemplo } from './servicos.js'
-import { diaDaSemana, instanteEmSaoPaulo, partesEmSaoPaulo } from '../utils/fuso.js'
+import { diaDaSemana, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../utils/fuso.js'
 import { calcularHorariosLivres } from '../utils/horariosLivres.js'
+import {
+  agendamentosForaDoHorario,
+  cabeNoExpediente,
+  errosDosHorarios,
+  horariosDosDias,
+  juntarIntervalos,
+} from '../utils/expediente.js'
 import { errosDoServico, resumoDasVariacoes, temErros } from '../utils/servico.js'
 
 const statusValidos = ['agendado', 'concluido', 'cancelado', 'faltou']
@@ -34,6 +41,22 @@ function todosOsAgendamentos() {
 
 function todosOsItensDeAgendamento() {
   return [...itensDeExemplo, ...lerBancoLocal().agendamento_servicos]
+}
+
+function lerHorarios() {
+  return lerBancoLocal().horarios_trabalho || horariosDeExemplo
+}
+
+function lerBloqueios() {
+  return lerBancoLocal().bloqueios || bloqueiosDeExemplo
+}
+
+function bloqueiosQuePassamPeloDia(data) {
+  const comecoDoDia = instanteEmSaoPaulo(data, 0)
+  const fimDoDia = instanteEmSaoPaulo(somarDias(data, 1), 0)
+  return lerBloqueios().filter((bloqueio) =>
+    seSobrepoe(comecoDoDia, fimDoDia, new Date(bloqueio.inicio).getTime(), new Date(bloqueio.fim).getTime()),
+  )
 }
 
 function lerCatalogo() {
@@ -102,8 +125,8 @@ export async function listarHorariosLivres(
     data,
     duracao: duracaoMinutos,
     profissionalIds: candidatos.map((profissional) => profissional.id),
-    horariosTrabalho: horarios_trabalho,
-    bloqueios,
+    horariosTrabalho: lerHorarios(),
+    bloqueios: lerBloqueios(),
     agendamentos: todosOsAgendamentos().filter((agendamento) => agendamento.id !== ignorarAgendamentoId),
     agora: Date.now(),
     intervalo: salao.intervalo_minutos,
@@ -111,12 +134,29 @@ export async function listarHorariosLivres(
   })
 }
 
-export async function listarDiasDeAtendimento(profissionalId, servicoIds = []) {
-  const ids = candidatosDoHorario(profissionalId, servicoIds).map((profissional) => profissional.id)
-  const dias = horarios_trabalho
-    .filter((horario) => ids.includes(horario.profissional_id))
-    .map((horario) => horario.dia_semana)
-  return [...new Set(dias)]
+function bloqueadoODiaInteiro(profissionalId, data, bloqueios) {
+  const comecoDoDia = instanteEmSaoPaulo(data, 0)
+  const fimDoDia = instanteEmSaoPaulo(somarDias(data, 1), 0)
+  return bloqueios.some(
+    (bloqueio) =>
+      bloqueio.profissional_id === profissionalId &&
+      new Date(bloqueio.inicio).getTime() <= comecoDoDia &&
+      new Date(bloqueio.fim).getTime() >= fimDoDia,
+  )
+}
+
+export async function listarDatasAbertas(profissionalId, servicoIds, datas) {
+  const candidatos = candidatosDoHorario(profissionalId, servicoIds || [])
+  const horarios = lerHorarios()
+  const bloqueios = lerBloqueios()
+  return datas.filter((data) =>
+    candidatos.some(
+      (profissional) =>
+        horarios.some(
+          (horario) => horario.profissional_id === profissional.id && horario.dia_semana === diaDaSemana(data),
+        ) && !bloqueadoODiaInteiro(profissional.id, data, bloqueios),
+    ),
+  )
 }
 
 export async function buscarProfissional(id) {
@@ -177,20 +217,11 @@ export async function listarServicosPopulares(quantidade) {
 
 export async function listarHorarioDoSalao() {
   const idsAtivos = profissionais.filter((profissional) => profissional.ativo).map((profissional) => profissional.id)
-  const semana = [null, null, null, null, null, null, null]
-
-  for (const horario of horarios_trabalho) {
-    if (!idsAtivos.includes(horario.profissional_id)) continue
-    const atual = semana[horario.dia_semana]
-    if (!atual) {
-      semana[horario.dia_semana] = { inicio: horario.inicio, fim: horario.fim }
-    } else {
-      if (horario.inicio < atual.inicio) atual.inicio = horario.inicio
-      if (horario.fim > atual.fim) atual.fim = horario.fim
-    }
-  }
-
-  return semana
+  const horarios = lerHorarios().filter((horario) => idsAtivos.includes(horario.profissional_id))
+  return [0, 1, 2, 3, 4, 5, 6].map((dia) => {
+    const doDia = horarios.filter((horario) => horario.dia_semana === dia)
+    return doDia.length > 0 ? juntarIntervalos(doDia) : null
+  })
 }
 
 export async function listarVariacoes(servicoId) {
@@ -213,12 +244,12 @@ export async function listarServicosDoProfissional(profissionalId) {
 }
 
 export async function listarHorariosDoProfissional(profissionalId) {
-  return horarios_trabalho.filter((horario) => horario.profissional_id === profissionalId)
+  return lerHorarios().filter((horario) => horario.profissional_id === profissionalId)
 }
 
 export async function listarBloqueiosDoDia(profissionalId, data) {
-  return bloqueios.filter(
-    (bloqueio) => bloqueio.profissional_id === profissionalId && mesmoDia(bloqueio.inicio, data),
+  return bloqueiosQuePassamPeloDia(data).filter(
+    (bloqueio) => bloqueio.profissional_id === profissionalId,
   )
 }
 
@@ -414,13 +445,11 @@ export async function listarAgendaDoDia(data, profissionalId) {
       .filter((agendamento) => partesEmSaoPaulo(agendamento.inicio).data === data)
       .sort(ordenarPorInicio)
       .map(completarAgendamento),
-    bloqueios: bloqueios.filter(
-      (bloqueio) => ids.includes(bloqueio.profissional_id) && partesEmSaoPaulo(bloqueio.inicio).data === data,
-    ),
-    turnos: horarios_trabalho.filter(
+    bloqueios: bloqueiosQuePassamPeloDia(data).filter((bloqueio) => ids.includes(bloqueio.profissional_id)),
+    turnos: lerHorarios().filter(
       (horario) => ids.includes(horario.profissional_id) && horario.dia_semana === diaDaSemana(data),
     ),
-    salaoAberto: horarios_trabalho.some(
+    salaoAberto: lerHorarios().some(
       (horario) =>
         horario.dia_semana === diaDaSemana(data) &&
         profissionais.some((profissional) => profissional.ativo && profissional.id === horario.profissional_id),
@@ -469,7 +498,7 @@ export async function verificarEncaixe(profissionalId, data, minutos, duracaoMin
     }
   }
 
-  const bloqueio = bloqueios.find(
+  const bloqueio = lerBloqueios().find(
     (item) =>
       item.profissional_id === profissionalId &&
       seSobrepoe(inicio, fim, new Date(item.inicio).getTime(), new Date(item.fim).getTime()),
@@ -481,14 +510,10 @@ export async function verificarEncaixe(profissionalId, data, minutos, duracaoMin
     }
   }
 
-  const turno = horarios_trabalho.find(
+  const turnos = lerHorarios().filter(
     (horario) => horario.profissional_id === profissionalId && horario.dia_semana === diaDaSemana(data),
   )
-  const inicioDoTurno = turno ? Number(turno.inicio.slice(0, 2)) * 60 + Number(turno.inicio.slice(3, 5)) : null
-  const fimDoTurno = turno ? Number(turno.fim.slice(0, 2)) * 60 + Number(turno.fim.slice(3, 5)) : null
-  const foraDoExpediente = !turno || minutos < inicioDoTurno || minutos + duracaoMinutos > fimDoTurno
-
-  return { livre: true, foraDoExpediente }
+  return { livre: true, foraDoExpediente: !cabeNoExpediente(turnos, minutos, duracaoMinutos) }
 }
 
 function servicosUsados() {
@@ -662,4 +687,91 @@ export async function apagarServico(id) {
 
   if (!gravarCatalogo(catalogo)) return { erro: 'nao_salvou' }
   return { apagado: servico }
+}
+
+function gravarNoBanco(campo, valor) {
+  const banco = lerBancoLocal()
+  banco[campo] = valor
+  try {
+    gravarBancoLocal(banco)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function novosHorarios(profissionalId, dias) {
+  const outros = lerHorarios().filter((horario) => horario.profissional_id !== profissionalId)
+  let id = proximoId(lerHorarios())
+  return [...outros, ...horariosDosDias(dias, profissionalId).map((linha) => ({ id: id++, ...linha }))]
+}
+
+export async function conferirHorariosDoProfissional(profissionalId, dias) {
+  return agendamentosForaDoHorario(todosOsAgendamentos(), novosHorarios(profissionalId, dias), profissionalId, Date.now())
+    .sort(ordenarPorInicio)
+    .map(completarAgendamento)
+}
+
+export async function salvarHorariosDoProfissional(profissionalId, dias) {
+  if (!profissionais.some((profissional) => profissional.ativo && profissional.id === profissionalId)) {
+    return { erro: 'nao_encontrado' }
+  }
+  if (!Array.isArray(dias) || dias.length !== 7 || errosDosHorarios(dias).temErro) return { erro: 'invalido' }
+  if (!gravarNoBanco('horarios_trabalho', novosHorarios(profissionalId, dias))) return { erro: 'nao_salvou' }
+  return { foraDoHorario: await conferirHorariosDoProfissional(profissionalId, dias) }
+}
+
+export async function listarBloqueiosFuturos() {
+  const agora = Date.now()
+  return lerBloqueios()
+    .filter((bloqueio) => new Date(bloqueio.fim).getTime() > agora)
+    .sort(ordenarPorInicio)
+    .map((bloqueio) => ({
+      ...bloqueio,
+      profissional: profissionais.find((profissional) => profissional.id === bloqueio.profissional_id) || null,
+    }))
+}
+
+export async function conflitosDoBloqueio(profissionalId, inicio, fim) {
+  const inicioMs = new Date(inicio).getTime()
+  const fimMs = new Date(fim).getTime()
+  return todosOsAgendamentos()
+    .filter(
+      (agendamento) =>
+        agendamento.profissional_id === profissionalId &&
+        agendamento.status === 'agendado' &&
+        seSobrepoe(inicioMs, fimMs, new Date(agendamento.inicio).getTime(), new Date(agendamento.fim).getTime()),
+    )
+    .sort(ordenarPorInicio)
+    .map(completarAgendamento)
+}
+
+export async function criarBloqueio({ profissionalId, inicio, fim, motivo }) {
+  const inicioMs = new Date(inicio).getTime()
+  const fimMs = new Date(fim).getTime()
+  const motivoLimpo = typeof motivo === 'string' ? motivo.trim().slice(0, 40) : ''
+  if (!profissionais.some((profissional) => profissional.ativo && profissional.id === profissionalId)) {
+    return { erro: 'nao_encontrado' }
+  }
+  if (!Number.isFinite(inicioMs) || !Number.isFinite(fimMs) || fimMs <= inicioMs) return { erro: 'invalido' }
+  if (fimMs <= Date.now()) return { erro: 'ja_passou' }
+  if (!motivoLimpo) return { erro: 'invalido' }
+
+  const lista = lerBloqueios()
+  const bloqueio = {
+    id: proximoId(lista),
+    profissional_id: profissionalId,
+    inicio: new Date(inicioMs).toISOString(),
+    fim: new Date(fimMs).toISOString(),
+    motivo: motivoLimpo,
+  }
+  if (!gravarNoBanco('bloqueios', [...lista, bloqueio])) return { erro: 'nao_salvou' }
+  return { bloqueio }
+}
+
+export async function removerBloqueio(id) {
+  const lista = lerBloqueios()
+  if (!lista.some((bloqueio) => bloqueio.id === id)) return { erro: 'nao_encontrado' }
+  if (!gravarNoBanco('bloqueios', lista.filter((bloqueio) => bloqueio.id !== id))) return { erro: 'nao_salvou' }
+  return { removido: true }
 }

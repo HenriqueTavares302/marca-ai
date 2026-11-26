@@ -1,10 +1,30 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { CalendarOff, ChevronRight, Clock, LogOut, Store } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
-import EmConstrucao from '../../components/EmConstrucao.jsx'
 import { sair } from '../../utils/sessao.js'
+
+const itensDoMenu = [
+  {
+    caminho: '/salao/configuracoes/horarios',
+    titulo: 'Horários de trabalho',
+    explicacao: 'Dias e horas que cada profissional atende.',
+    icone: Clock,
+  },
+  {
+    caminho: '/salao/configuracoes/bloqueios',
+    titulo: 'Folgas e bloqueios',
+    explicacao: 'Férias, folgas e compromissos.',
+    icone: CalendarOff,
+  },
+  {
+    caminho: '/',
+    titulo: 'Ver como cliente',
+    explicacao: 'Abre a vitrine do salão.',
+    icone: Store,
+  },
+]
 
 function Configuracoes() {
   const navegar = useNavigate()
@@ -17,14 +37,27 @@ function Configuracoes() {
 
   return (
     <>
-      <EmConstrucao texto="Aqui vão ficar os dados do salão, os profissionais e os horários de funcionamento." />
-
-      <Link
-        to="/"
-        className="mx-auto flex min-h-12 items-center px-4 font-medium text-principal underline underline-offset-4"
-      >
-        Ver como cliente
-      </Link>
+      <nav aria-label="Ajustes">
+        <ul className="flex flex-col gap-3">
+          {itensDoMenu.map((item) => (
+            <li key={item.caminho}>
+              <Link
+                to={item.caminho}
+                className="flex min-h-16 items-center gap-3 rounded-2xl border-2 border-borda bg-superficie p-3"
+              >
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-capa text-destaque">
+                  <item.icone className="size-6" aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-semibold">{item.titulo}</span>
+                  <span className="text-texto-suave">{item.explicacao}</span>
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-texto-suave" aria-hidden="true" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <Botao variante="secundario" larguraTotal aoClicar={() => setConfirmandoSaida(true)}>
         <LogOut className="size-5" aria-hidden="true" />

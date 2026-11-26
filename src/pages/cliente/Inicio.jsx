@@ -160,7 +160,7 @@ function Inicio() {
                       {grupo.nome}
                       {ehHoje && <span className="ml-2 text-principal">(hoje)</span>}
                     </dt>
-                    <dd className={grupo.horario === 'Fechado' ? 'text-texto-suave' : ''}>{grupo.horario}</dd>
+                    <dd className={`text-right ${grupo.horario === 'Fechado' ? 'text-texto-suave' : ''}`}>{grupo.horario}</dd>
                   </div>
                 )
               })}

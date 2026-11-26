@@ -32,6 +32,29 @@ const itensDoSalao = [
     comVoltar: true,
     voltarPara: '/salao/servicos',
   },
+  {
+    caminho: '/salao/configuracoes/horarios',
+    titulo: 'Horários',
+    foraDaBarra: true,
+    semBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao/configuracoes',
+  },
+  {
+    caminho: '/salao/configuracoes/bloqueios',
+    titulo: 'Folgas e bloqueios',
+    foraDaBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao/configuracoes',
+  },
+  {
+    caminho: '/salao/configuracoes/bloqueios/novo',
+    titulo: 'Novo bloqueio',
+    foraDaBarra: true,
+    semBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao/configuracoes/bloqueios',
+  },
 ]
 
 function LayoutSalao() {

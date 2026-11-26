@@ -4,6 +4,10 @@ function listaOuVazia(valor) {
   return Array.isArray(valor) ? valor.filter((item) => item && typeof item === 'object') : []
 }
 
+function listaOuNula(valor) {
+  return Array.isArray(valor) ? listaOuVazia(valor) : null
+}
+
 function catalogoOuNulo(valor) {
   const valido =
     valor &&
@@ -31,9 +35,19 @@ export function lerBancoLocal() {
       agendamento_servicos: listaOuVazia(salvo && salvo.agendamento_servicos),
       alteracoes_de_status: listaOuVazia(salvo && salvo.alteracoes_de_status),
       catalogo: catalogoOuNulo(salvo && salvo.catalogo),
+      horarios_trabalho: listaOuNula(salvo && salvo.horarios_trabalho),
+      bloqueios: listaOuNula(salvo && salvo.bloqueios),
     }
   } catch {
-    return { clientes: [], agendamentos: [], agendamento_servicos: [], alteracoes_de_status: [], catalogo: null }
+    return {
+      clientes: [],
+      agendamentos: [],
+      agendamento_servicos: [],
+      alteracoes_de_status: [],
+      catalogo: null,
+      horarios_trabalho: null,
+      bloqueios: null,
+    }
   }
 }
 

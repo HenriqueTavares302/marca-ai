@@ -13,10 +13,13 @@ import MeusAgendamentos from './pages/cliente/MeusAgendamentos.jsx'
 import ServicosDoCliente from './pages/cliente/Servicos.jsx'
 import Agenda from './pages/salao/Agenda.jsx'
 import Clientes from './pages/salao/Clientes.jsx'
+import Bloqueios from './pages/salao/Bloqueios.jsx'
 import Configuracoes from './pages/salao/Configuracoes.jsx'
 import Entrar from './pages/salao/Entrar.jsx'
 import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
+import NovoBloqueio from './pages/salao/NovoBloqueio.jsx'
 import FormularioDeServico from './pages/salao/FormularioDeServico.jsx'
+import HorariosDeTrabalho from './pages/salao/HorariosDeTrabalho.jsx'
 import ServicosDoSalao from './pages/salao/Servicos.jsx'
 
 const rotas = createBrowserRouter(
@@ -41,6 +44,9 @@ const rotas = createBrowserRouter(
         <Route path="servicos/:id" element={<FormularioDeServico />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="configuracoes" element={<Configuracoes />} />
+        <Route path="configuracoes/horarios" element={<HorariosDeTrabalho />} />
+        <Route path="configuracoes/bloqueios" element={<Bloqueios />} />
+        <Route path="configuracoes/bloqueios/novo" element={<NovoBloqueio />} />
         <Route path="novo" element={<NovoAgendamento />} />
       </Route>
 

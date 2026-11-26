@@ -18,6 +18,7 @@ function CampoTexto({
   limite,
   multilinha = false,
   acao,
+  idDoErroExterno,
 }) {
   const idGerado = useId()
   const idDoCampo = id || idGerado
@@ -26,7 +27,9 @@ function CampoTexto({
   const descricoes = []
   if (ajuda) descricoes.push(idAjuda)
   if (erro) descricoes.push(idErro)
-  const corDaBorda = erro ? 'border-perigo' : 'border-texto-suave'
+  if (idDoErroExterno) descricoes.push(idDoErroExterno)
+  const invalido = Boolean(erro || idDoErroExterno)
+  const corDaBorda = invalido ? 'border-perigo' : 'border-texto-suave'
 
   const propriedades = {
     id: idDoCampo,
@@ -38,7 +41,7 @@ function CampoTexto({
     maxLength: limite,
     inputMode: modoDeEntrada,
     autoComplete: autoCompletar,
-    'aria-invalid': erro ? true : undefined,
+    'aria-invalid': invalido ? true : undefined,
     'aria-describedby': descricoes.length > 0 ? descricoes.join(' ') : undefined,
     className: `w-full rounded-xl border-2 bg-superficie px-4 text-texto placeholder:text-texto-suave ${corDaBorda} ${
       multilinha ? 'min-h-24 py-3' : 'min-h-12'

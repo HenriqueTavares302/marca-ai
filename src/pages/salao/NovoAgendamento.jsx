@@ -17,7 +17,7 @@ import {
   buscarSalao,
   criarAgendamento,
   listarClientes,
-  listarDiasDeAtendimento,
+  listarDatasAbertas,
   listarHorariosLivres,
   listarProfissionaisComServicos,
   listarServicosComVariacoes,
@@ -40,7 +40,7 @@ import {
   semAcento,
 } from '../../utils/cliente.js'
 import { formatarDataCurta, formatarDuracao } from '../../utils/formatos.js'
-import { diaDaSemana, hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import { hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos, minutosDaHora } from '../../utils/horariosLivres.js'
 import { mostrarAcimaDoRodape, rolarFaixaParaODia } from '../../utils/rolagem.js'
 import { profissionalLogado } from '../../utils/sessao.js'
@@ -169,10 +169,11 @@ function NovoAgendamento() {
 
   useEffect(() => {
     async function carregarDias() {
-      setDiasAbertos(await listarDiasDeAtendimento(profissionalId))
+      const proximosDias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
+      setDiasAbertos(await listarDatasAbertas(profissionalId, [], proximosDias))
     }
     carregarDias()
-  }, [profissionalId])
+  }, [profissionalId, hoje])
 
   const resumo = base ? resumirEscolha(escolha, base.servicos) : resumirEscolha([], [])
   const servicoIds = resumo.itens.map((item) => item.servico.id)
@@ -591,7 +592,7 @@ function NovoAgendamento() {
                 key={dia}
                 data={dia}
                 hoje={hoje}
-                aberto={diasAbertos.includes(diaDaSemana(dia))}
+                aberto={diasAbertos.includes(dia)}
                 selecionado={dia === data}
                 aoEscolher={() => escolherDia(dia)}
               />
