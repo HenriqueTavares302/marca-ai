@@ -9,6 +9,7 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 - Cada issue tem "O que fazer" e "Como testar". Antes de fechar, conferir os dois.
 - Mensagem de commit em português, curta, terminando com `Closes #N` da issue.
 - Documentação completa só no final (milestone 7). Não criar documentos extras no meio do caminho.
+- Antes de cada commit, fazer uma revisão rápida de segurança e me dizer o resultado: nenhuma chave ou senha no código, nenhum dado pessoal real (telefone, e-mail, endereço, nome de cliente), nada sensível em logs ou no console, links externos abrindo com rel=noopener, e dependências novas justificadas.
 
 ## Regras obrigatórias
 - Nunca deixar assinatura do Claude: sem `Co-Authored-By`, sem link de sessão nos commits, sem "Generated with Claude Code" em PRs, issues ou código.
