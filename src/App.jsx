@@ -4,6 +4,7 @@ import LayoutSalao from './layouts/LayoutSalao.jsx'
 import Componentes from './pages/Componentes.jsx'
 import NaoEncontrada from './pages/NaoEncontrada.jsx'
 import Agendar from './pages/cliente/Agendar.jsx'
+import AgendarDados from './pages/cliente/AgendarDados.jsx'
 import AgendarHorario from './pages/cliente/AgendarHorario.jsx'
 import Inicio from './pages/cliente/Inicio.jsx'
 import MeusAgendamentos from './pages/cliente/MeusAgendamentos.jsx'
@@ -22,16 +23,7 @@ function App() {
         <Route path="/servicos" element={<ServicosDoCliente />} />
         <Route path="/agendar" element={<Agendar />} />
         <Route path="/agendar/horario" element={<AgendarHorario />} />
-        <Route
-          path="/agendar/dados"
-          element={
-            <PassoEmConstrucao
-              passo={3}
-              texto="Aqui você vai informar nome e celular."
-              proximoCaminho="/agendar/confirmacao"
-            />
-          }
-        />
+        <Route path="/agendar/dados" element={<AgendarDados />} />
         <Route
           path="/agendar/confirmacao"
           element={<PassoEmConstrucao passo={4} texto="Aqui você vai revisar tudo e confirmar o agendamento." />}

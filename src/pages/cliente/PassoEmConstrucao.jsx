@@ -7,33 +7,14 @@ import IndicadorDePassos from '../../components/IndicadorDePassos.jsx'
 import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
-import { buscarProfissional, listarServicosComVariacoes } from '../../data/consultas.js'
-import { carregarEscolha, carregarHorario, carregarProfissional, resumirEscolha } from '../../utils/agendamento.js'
-import { formatarDataCurta } from '../../utils/formatos.js'
-import { formatarMinutos } from '../../utils/horariosLivres.js'
+import { carregarResumoDoFluxo } from '../../utils/fluxo.js'
 
 function PassoEmConstrucao({ passo, texto, proximoCaminho }) {
   const [dados, setDados] = useState(null)
 
   useEffect(() => {
     async function carregar() {
-      const servicos = await listarServicosComVariacoes()
-      const resumo = resumirEscolha(carregarEscolha(), servicos)
-      const horario = carregarHorario()
-      const idDoProfissional = horario ? horario.profissionalId : carregarProfissional()
-      const profissional = idDoProfissional === null ? null : await buscarProfissional(idDoProfissional)
-      const quando = horario
-        ? formatarDataCurta(horario.data) +
-          ' · ' +
-          formatarMinutos(horario.minutos) +
-          ' às ' +
-          formatarMinutos(horario.minutos + resumo.duracaoTotal)
-        : ''
-      setDados({
-        resumo,
-        quando,
-        nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
-      })
+      setDados(await carregarResumoDoFluxo())
     }
     carregar()
   }, [])

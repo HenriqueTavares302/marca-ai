@@ -26,6 +26,66 @@ export function salvarProfissional(id) {
 }
 
 const chaveDoHorario = 'marca-ai:horario'
+const chaveDosDados = 'marca-ai:dados'
+const chaveDosDadosLembrados = 'marca-ai:cliente-lembrado'
+
+function lerJson(armazenamento, chaveDoItem) {
+  try {
+    const salvo = JSON.parse(armazenamento.getItem(chaveDoItem))
+    return salvo && typeof salvo === 'object' ? salvo : null
+  } catch {
+    return null
+  }
+}
+
+function textoOuVazio(valor, limite) {
+  return typeof valor === 'string' ? valor.slice(0, limite) : ''
+}
+
+export function carregarDadosDoCliente() {
+  const salvo = lerJson(sessionStorage, chaveDosDados)
+  if (!salvo) return null
+  return {
+    nome: textoOuVazio(salvo.nome, 80),
+    celular: textoOuVazio(salvo.celular, 20),
+    observacao: textoOuVazio(salvo.observacao, 200),
+    lembrar: salvo.lembrar !== false,
+  }
+}
+
+export function salvarDadosDoCliente(dados) {
+  try {
+    sessionStorage.setItem(chaveDosDados, JSON.stringify(dados))
+  } catch {
+    return
+  }
+}
+
+export function carregarDadosLembrados() {
+  try {
+    const salvo = lerJson(localStorage, chaveDosDadosLembrados)
+    if (!salvo) return null
+    return { nome: textoOuVazio(salvo.nome, 80), celular: textoOuVazio(salvo.celular, 20) }
+  } catch {
+    return null
+  }
+}
+
+export function lembrarDados(nome, celular) {
+  try {
+    localStorage.setItem(chaveDosDadosLembrados, JSON.stringify({ nome, celular }))
+  } catch {
+    return
+  }
+}
+
+export function esquecerDados() {
+  try {
+    localStorage.removeItem(chaveDosDadosLembrados)
+  } catch {
+    return
+  }
+}
 
 export function carregarHorario() {
   try {
@@ -89,6 +149,7 @@ export function limparEscolha() {
     sessionStorage.removeItem(chave)
     sessionStorage.removeItem(chaveDoProfissional)
     sessionStorage.removeItem(chaveDoHorario)
+    sessionStorage.removeItem(chaveDosDados)
   } catch {
     return
   }
