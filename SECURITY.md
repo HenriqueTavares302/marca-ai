@@ -1,21 +1,15 @@
-# Security Policy
+# Política de segurança
 
-## Supported Versions
+## Versões
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+O Marca Aí ainda não tem versões publicadas. Só a branch `main` recebe correções de segurança.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Como relatar uma falha
 
-## Reporting a Vulnerability
+Se encontrar uma falha de segurança, relate de forma privada:
 
-Use this section to tell people how to report a vulnerability.
+1. Abra a aba **Security** deste repositório no GitHub.
+2. Clique em **Report a vulnerability**.
+3. Descreva o problema e, se possível, como reproduzir.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Não exponha detalhes da falha em issues, pull requests ou discussões públicas. Respondemos pelo próprio relato privado.
