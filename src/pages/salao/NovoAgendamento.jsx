@@ -52,6 +52,7 @@ function lerParametros(params, hoje, idLogado) {
   const data = params.get('data')
   const hora = params.get('hora')
   const profissional = Number(params.get('profissional'))
+  const clienteId = Number(params.get('cliente'))
   const dataValida =
     /^\d{4}-\d{2}-\d{2}$/.test(data || '') && data >= hoje && data <= somarDias(hoje, quantidadeDeDias - 1)
   const horaValida = /^\d{2}:\d{2}$/.test(hora || '') && minutosDaHora(hora) < 24 * 60
@@ -59,6 +60,7 @@ function lerParametros(params, hoje, idLogado) {
     data: dataValida ? data : hoje,
     minutos: dataValida && horaValida ? minutosDaHora(hora) : null,
     profissionalId: Number.isInteger(profissional) && profissional > 0 ? profissional : idLogado,
+    clienteId: Number.isInteger(clienteId) && clienteId > 0 ? clienteId : null,
   }
 }
 
@@ -123,6 +125,7 @@ function NovoAgendamento() {
   const [base, setBase] = useState(null)
   const [busca, setBusca] = useState('')
   const [cliente, setCliente] = useState(null)
+  const [telefoneDaRota, setTelefoneDaRota] = useState(null)
   const [cadastrando, setCadastrando] = useState(false)
   const [novoNome, setNovoNome] = useState('')
   const [novoCelular, setNovoCelular] = useState('')
@@ -163,9 +166,14 @@ function NovoAgendamento() {
         buscarSalao(),
       ])
       setBase({ clientes, servicos, profissionais, salao })
+      const daRota = clientes.find((item) => item.id === inicial.clienteId)
+      if (daRota) {
+        setCliente({ nome: daRota.nome, telefone: daRota.telefone })
+        setTelefoneDaRota(daRota.telefone)
+      }
     }
     carregar()
-  }, [])
+  }, [inicial.clienteId])
 
   useEffect(() => {
     async function carregarDias() {
@@ -226,7 +234,7 @@ function NovoAgendamento() {
   const horarioValido = podeVerHorarios && (horarioNaLista || encaixeValido)
 
   const sujo = Boolean(
-    cliente || escolha.length > 0 || observacao.trim() || horaDoEncaixe || (cadastrando && (novoNome || novoCelular)),
+    (cliente && cliente.telefone !== telefoneDaRota) || escolha.length > 0 || observacao.trim() || horaDoEncaixe || (cadastrando && (novoNome || novoCelular)),
   )
 
   const bloqueio = useBlocker(

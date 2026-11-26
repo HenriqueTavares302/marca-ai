@@ -5,34 +5,23 @@ import {
   ChevronLeft,
   ChevronRight,
   Coffee,
-  MessageCircle,
   MessageSquareText,
-  Phone,
   Plus,
   RotateCcw,
-  UserX,
-  CircleCheck,
-  CircleX,
 } from 'lucide-react'
 import Aviso from '../../components/Aviso.jsx'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import Chip from '../../components/Chip.jsx'
 import ChipDeStatus from '../../components/ChipDeStatus.jsx'
-import Dialogo from '../../components/Dialogo.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
-import PainelInferior from '../../components/PainelInferior.jsx'
-import PrecoDoServico from '../../components/PrecoDoServico.jsx'
-import { atualizarStatusAgendamento, buscarSalao, listarAgendaDoDia } from '../../data/consultas.js'
-import { montarLinhaDoTempo, resumirDia, textoDoValor, tipoDoPrecoGuardado, valorDoAgendamento } from '../../utils/agenda.js'
-import { apenasDigitosDoCelular, formatarCelular } from '../../utils/cliente.js'
-import { formatarDataCurta, formatarDataLonga, linkDoWhatsapp } from '../../utils/formatos.js'
+import PainelDoAtendimento from '../../components/PainelDoAtendimento.jsx'
+import { buscarSalao, listarAgendaDoDia } from '../../data/consultas.js'
+import { montarLinhaDoTempo, resumirDia, textoDoValor, valorDoAgendamento } from '../../utils/agenda.js'
+import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 import { profissionalLogado } from '../../utils/sessao.js'
-
-const estiloDeBotaoComoLink =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-principal bg-superficie px-4 font-semibold text-principal [&>svg]:shrink-0'
 
 function plural(quantidade, singular, pluralDaPalavra) {
   return quantidade + ' ' + (quantidade === 1 ? singular : pluralDaPalavra)
@@ -138,8 +127,6 @@ function Agenda() {
   const [versao, setVersao] = useState(0)
   const [dados, setDados] = useState(null)
   const [abertoId, setAbertoId] = useState(null)
-  const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false)
-  const [salvando, setSalvando] = useState(false)
   const [aviso, setAviso] = useState(() =>
     location.state && typeof location.state.aviso === 'string'
       ? { id: Date.now(), tipo: 'sucesso', mensagem: location.state.aviso }
@@ -196,18 +183,10 @@ function Agenda() {
     setData((atual) => somarDias(atual, dx < 0 ? 1 : -1))
   }
 
-  async function mudarStatus(id, novoStatus, mensagem) {
-    setSalvando(true)
-    const resultado = await atualizarStatusAgendamento(id, novoStatus)
-    setSalvando(false)
-    setConfirmandoCancelamento(false)
-    if (resultado.erro) {
-      setAviso({ id: Date.now(), tipo: 'erro', mensagem: 'Não conseguimos mudar o status. Tente de novo.' })
-    } else {
-      setAviso({ id: Date.now(), tipo: 'sucesso', mensagem })
-      if (novoStatus === 'cancelado') setAbertoId(null)
-    }
-    setVersao(versao + 1)
+  function aoMudarStatus(resultado) {
+    setAviso({ id: Date.now(), tipo: resultado.erro ? 'erro' : 'sucesso', mensagem: resultado.mensagem })
+    if (!resultado.erro && resultado.status === 'cancelado') setAbertoId(null)
+    setVersao((atual) => atual + 1)
   }
 
   const linhaDoTempo = carregado
@@ -359,161 +338,15 @@ function Agenda() {
         </div>
       </div>
 
-      <PainelInferior
-        aberto={Boolean(aberto)}
-        titulo={aberto ? aberto.cliente.nome : ''}
-        subtitulo={
-          aberto
-            ? formatarDataCurta(partesEmSaoPaulo(aberto.inicio).data) +
-              ' · ' +
-              partesEmSaoPaulo(aberto.inicio).hora +
-              ' às ' +
-              partesEmSaoPaulo(aberto.fim).hora
-            : ''
-        }
+      <PainelDoAtendimento
+        agendamento={aberto}
+        salao={carregado ? dados.salao : null}
         aoFechar={() => setAbertoId(null)}
-      >
-        {aberto && (
-          <DetalheDoAtendimento
-            agendamento={aberto}
-            salao={dados.salao}
-            salvando={salvando}
-            aoMudarStatus={mudarStatus}
-            aoPedirCancelamento={() => setConfirmandoCancelamento(true)}
-          />
-        )}
-      </PainelInferior>
-
-      <Dialogo
-        aberto={confirmandoCancelamento && Boolean(aberto)}
-        titulo="Cancelar este atendimento?"
-        aoFechar={() => setConfirmandoCancelamento(false)}
-      >
-        {aberto && (
-          <>
-            <p>
-              {aberto.cliente.nome}, {partesEmSaoPaulo(aberto.inicio).hora}. O horário volta a ficar livre.
-            </p>
-            <div className="flex flex-col gap-2">
-              <Botao variante="secundario" larguraTotal aoClicar={() => setConfirmandoCancelamento(false)}>
-                Manter atendimento
-              </Botao>
-              <Botao
-                variante="perigo"
-                larguraTotal
-                carregando={salvando}
-                aoClicar={() => mudarStatus(aberto.id, 'cancelado', 'Atendimento cancelado.')}
-              >
-                Sim, cancelar
-              </Botao>
-            </div>
-          </>
-        )}
-      </Dialogo>
+        aoMudar={aoMudarStatus}
+      />
 
       <Aviso aviso={aviso} definirAviso={setAviso} alto />
     </>
-  )
-}
-
-function DetalheDoAtendimento({ agendamento, salao, salvando, aoMudarStatus, aoPedirCancelamento }) {
-  const telefone = apenasDigitosDoCelular(agendamento.cliente.telefone)
-  const inicio = partesEmSaoPaulo(agendamento.inicio)
-  const mensagem =
-    'Olá, ' +
-    primeiroNome(agendamento.cliente.nome) +
-    '! Aqui é do ' +
-    salao.nome +
-    '. Sobre o seu horário de ' +
-    formatarDataLonga(inicio.data).toLowerCase() +
-    ', às ' +
-    inicio.hora +
-    ': '
-  const valor = valorDoAgendamento(agendamento)
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <ChipDeStatus valor={agendamento.status} />
-        <span className="text-texto-suave">com {agendamento.profissional.nome}</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <a href={'tel:+55' + telefone} className={estiloDeBotaoComoLink}>
-          <Phone className="size-5" aria-hidden="true" />
-          Ligar
-        </a>
-        <Botao variante="secundario" linkExterno={linkDoWhatsapp('55' + telefone, mensagem)}>
-          <MessageCircle className="size-5" aria-hidden="true" />
-          WhatsApp
-        </Botao>
-      </div>
-      <p className="text-center text-texto-suave">{formatarCelular(telefone)}</p>
-
-      <ul className="divide-y divide-borda rounded-2xl border-2 border-borda px-4">
-        {agendamento.servicos.map((item) => (
-          <li key={item.id} className="flex items-start justify-between gap-3 py-2">
-            <span>{item.variacao ? item.servico.nome + ' · ' + item.variacao.nome : item.servico.nome}</span>
-            <PrecoDoServico tipoPreco={tipoDoPrecoGuardado(item)} preco={item.preco} />
-          </li>
-        ))}
-        <li className="flex items-start justify-between gap-3 py-2">
-          <span className="font-semibold">Total</span>
-          <span className="text-right font-semibold">{textoDoValor(valor)}</span>
-        </li>
-      </ul>
-
-      <p>
-        Pagamento: {agendamento.forma_pagamento === 'pix' ? 'Pix pelo app' : 'no salão'} ·{' '}
-        {agendamento.pago ? 'pago' : 'a pagar'}
-      </p>
-
-      {agendamento.observacoes && (
-        <p className="flex items-start gap-2 rounded-2xl border-2 border-principal p-3">
-          <MessageSquareText className="mt-0.5 size-5 shrink-0 text-principal" aria-hidden="true" />
-          <span>
-            <span className="font-semibold">Observação:</span> {agendamento.observacoes}
-          </span>
-        </p>
-      )}
-
-      {agendamento.status === 'agendado' && (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2">
-            <Botao carregando={salvando} aoClicar={() => aoMudarStatus(agendamento.id, 'concluido', 'Marcado como concluído.')}>
-              {!salvando && <CircleCheck className="size-5" aria-hidden="true" />}
-              Concluído
-            </Botao>
-            <Botao
-              variante="secundario"
-              carregando={salvando}
-              aoClicar={() => aoMudarStatus(agendamento.id, 'faltou', 'Marcado como falta.')}
-            >
-              {!salvando && <UserX className="size-5" aria-hidden="true" />}
-              Faltou
-            </Botao>
-          </div>
-          <Botao variante="secundario" larguraTotal aoClicar={aoPedirCancelamento}>
-            <CircleX className="size-5" aria-hidden="true" />
-            Cancelar atendimento
-          </Botao>
-        </div>
-      )}
-
-      {(agendamento.status === 'concluido' || agendamento.status === 'faltou') && (
-        <Botao
-          variante="secundario"
-          larguraTotal
-          carregando={salvando}
-          aoClicar={() => aoMudarStatus(agendamento.id, 'agendado', 'Voltou para agendado.')}
-        >
-          {!salvando && <RotateCcw className="size-5" aria-hidden="true" />}
-          Voltar para agendado
-        </Botao>
-      )}
-
-      {agendamento.status === 'cancelado' && <p className="text-texto-suave">Este atendimento foi cancelado.</p>}
-    </div>
   )
 }
 

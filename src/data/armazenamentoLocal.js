@@ -31,6 +31,7 @@ export function lerBancoLocal() {
     const salvo = JSON.parse(localStorage.getItem(chave))
     return {
       clientes: listaOuVazia(salvo && salvo.clientes),
+      clientes_completos: Boolean(salvo && salvo.clientes_completos === true),
       agendamentos: listaOuVazia(salvo && salvo.agendamentos),
       agendamento_servicos: listaOuVazia(salvo && salvo.agendamento_servicos),
       alteracoes_de_status: listaOuVazia(salvo && salvo.alteracoes_de_status),
@@ -41,6 +42,7 @@ export function lerBancoLocal() {
   } catch {
     return {
       clientes: [],
+      clientes_completos: false,
       agendamentos: [],
       agendamento_servicos: [],
       alteracoes_de_status: [],

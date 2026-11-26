@@ -11,6 +11,7 @@ import { salao } from './salao.js'
 import { servico_variacoes as variacoesDeExemplo } from './servico_variacoes.js'
 import { categorias as categoriasDeExemplo, servicos as servicosDeExemplo } from './servicos.js'
 import { diaDaSemana, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../utils/fuso.js'
+import { apenasDigitosDoCelular, erroDoCelular, erroDoNome } from '../utils/cliente.js'
 import { calcularHorariosLivres } from '../utils/horariosLivres.js'
 import {
   agendamentosForaDoHorario,
@@ -78,7 +79,17 @@ function servicoIdsDoProfissional(catalogo, profissionalId) {
 }
 
 function todosOsClientes() {
-  return [...clientesDeExemplo, ...lerBancoLocal().clientes]
+  const banco = lerBancoLocal()
+  return banco.clientes_completos ? banco.clientes : [...clientesDeExemplo, ...banco.clientes]
+}
+
+function clienteRemovido(cliente) {
+  return !cliente.telefone
+}
+
+function paraOCliente(agendamento) {
+  const cliente = agendamento.cliente ? { nome: agendamento.cliente.nome, telefone: agendamento.cliente.telefone } : null
+  return { ...agendamento, cliente }
 }
 
 export async function buscarSalao() {
@@ -254,7 +265,9 @@ export async function listarBloqueiosDoDia(profissionalId, data) {
 }
 
 export async function listarClientes() {
-  return todosOsClientes().sort((a, b) => a.nome.localeCompare(b.nome))
+  return todosOsClientes()
+    .filter((cliente) => !clienteRemovido(cliente))
+    .sort((a, b) => a.nome.localeCompare(b.nome))
 }
 
 export async function buscarCliente(id) {
@@ -373,7 +386,7 @@ export async function criarAgendamento({ nome, telefone, profissionalId, inicio,
     return { erro: 'nao_salvou' }
   }
 
-  return { agendamento: completarAgendamento(agendamento) }
+  return { agendamento: paraOCliente(completarAgendamento(agendamento)) }
 }
 
 function dentroDoPrazo(agendamento) {
@@ -385,7 +398,7 @@ export async function listarMeusAgendamentos(ids) {
   return lerBancoLocal()
     .agendamentos.filter((agendamento) => ids.includes(agendamento.id))
     .sort(ordenarPorInicio)
-    .map(completarAgendamento)
+    .map((agendamento) => paraOCliente(completarAgendamento(agendamento)))
 }
 
 export async function cancelarAgendamento(id) {
@@ -400,7 +413,7 @@ export async function cancelarAgendamento(id) {
   } catch {
     return { erro: 'nao_salvou' }
   }
-  return { agendamento: completarAgendamento(agendamento) }
+  return { agendamento: paraOCliente(completarAgendamento(agendamento)) }
 }
 
 export async function remarcarAgendamento(id, profissionalId, novoInicio) {
@@ -429,7 +442,7 @@ export async function remarcarAgendamento(id, profissionalId, novoInicio) {
   } catch {
     return { erro: 'nao_salvou' }
   }
-  return { agendamento: completarAgendamento(agendamento) }
+  return { agendamento: paraOCliente(completarAgendamento(agendamento)) }
 }
 
 export async function listarAgendaDoDia(data, profissionalId) {
@@ -774,4 +787,132 @@ export async function removerBloqueio(id) {
   if (!lista.some((bloqueio) => bloqueio.id === id)) return { erro: 'nao_encontrado' }
   if (!gravarNoBanco('bloqueios', lista.filter((bloqueio) => bloqueio.id !== id))) return { erro: 'nao_salvou' }
   return { removido: true }
+}
+
+function gravarClientes(lista) {
+  const banco = lerBancoLocal()
+  banco.clientes = lista
+  banco.clientes_completos = true
+  try {
+    gravarBancoLocal(banco)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function resumoDoCliente(cliente, agendamentos) {
+  const dele = agendamentos.filter((agendamento) => agendamento.cliente_id === cliente.id)
+  const concluidos = dele.filter((agendamento) => agendamento.status === 'concluido').sort(ordenarPorInicio)
+  const ultimo = concluidos[concluidos.length - 1]
+  return {
+    ...cliente,
+    atendimentos: concluidos.length,
+    ultimo_atendimento: ultimo ? ultimo.inicio : null,
+  }
+}
+
+export async function listarClientesDoSalao() {
+  const agendamentos = todosOsAgendamentos()
+  return todosOsClientes()
+    .filter((cliente) => !clienteRemovido(cliente))
+    .map((cliente) => resumoDoCliente(cliente, agendamentos))
+}
+
+export async function buscarFichaDoCliente(id) {
+  const cliente = todosOsClientes().find((item) => item.id === id)
+  if (!cliente || clienteRemovido(cliente)) return null
+  const agora = Date.now()
+  const dele = todosOsAgendamentos()
+    .filter((agendamento) => agendamento.cliente_id === id)
+    .sort(ordenarPorInicio)
+    .map(completarAgendamento)
+  const ehProximo = (agendamento) => agendamento.status === 'agendado' && new Date(agendamento.fim).getTime() > agora
+  const concluidos = dele.filter((agendamento) => agendamento.status === 'concluido')
+  const itensConcluidos = concluidos.flatMap((agendamento) => agendamento.servicos)
+
+  return {
+    cliente,
+    proximos: dele.filter(ehProximo),
+    historico: dele.filter((agendamento) => !ehProximo(agendamento)).reverse(),
+    numeros: {
+      concluidos: concluidos.length,
+      faltas: dele.filter((agendamento) => agendamento.status === 'faltou').length,
+      totalGasto: itensConcluidos.reduce((total, item) => total + (item.preco || 0), 0),
+      temValorACombinar: itensConcluidos.some((item) => item.preco === null),
+    },
+  }
+}
+
+export async function conferirCliente(dados) {
+  return errosDoCliente(dados, todosOsClientes())
+}
+
+function errosDoCliente(dados, lista) {
+  const erros = {}
+  const erroDeNome = erroDoNome(dados.nome)
+  if (erroDeNome) erros.nome = erroDeNome
+  else if (dados.nome.trim().length > 80) erros.nome = 'Use no máximo 80 caracteres.'
+
+  const telefone = apenasDigitosDoCelular(dados.celular)
+  const outro = lista.find((cliente) => cliente.telefone && cliente.telefone === telefone && cliente.id !== dados.id)
+  const atual = lista.find((cliente) => cliente.id === dados.id)
+  if (outro) {
+    erros.celular = 'Este celular já é de ' + outro.nome + '.'
+  } else if (!atual || atual.telefone !== telefone) {
+    const erroDeCelular = erroDoCelular(dados.celular)
+    if (erroDeCelular) erros.celular = erroDeCelular
+  }
+
+  if (String(dados.observacoes || '').length > 500) erros.observacoes = 'Use no máximo 500 caracteres.'
+  return erros
+}
+
+export async function salvarCliente(dados) {
+  const lista = todosOsClientes().map((cliente) => ({ ...cliente }))
+  const atual = dados.id ? lista.find((cliente) => cliente.id === dados.id) : null
+  if (dados.id && (!atual || clienteRemovido(atual))) return { erro: 'nao_encontrado' }
+  const erros = errosDoCliente(dados, lista)
+  if (Object.keys(erros).length > 0) return { erro: 'invalido', erros }
+
+  const campos = {
+    nome: dados.nome.trim().replace(/\s+/g, ' '),
+    telefone: apenasDigitosDoCelular(dados.celular),
+    observacoes: String(dados.observacoes || '').trim() || null,
+  }
+  let cliente
+  if (atual) {
+    cliente = Object.assign(atual, campos)
+  } else {
+    cliente = { id: proximoId(lista), user_id: null, email: null, criado_em: new Date().toISOString(), ...campos }
+    lista.push(cliente)
+  }
+  if (!gravarClientes(lista)) return { erro: 'nao_salvou' }
+  return { cliente }
+}
+
+export async function removerDadosDoCliente(id) {
+  const lista = todosOsClientes().map((cliente) => ({ ...cliente }))
+  const cliente = lista.find((item) => item.id === id)
+  if (!cliente || clienteRemovido(cliente)) return { erro: 'nao_encontrado' }
+
+  const agora = Date.now()
+  const dele = todosOsAgendamentos().filter((agendamento) => agendamento.cliente_id === id)
+  const futuros = dele.filter(
+    (agendamento) => agendamento.status === 'agendado' && new Date(agendamento.fim).getTime() > agora,
+  )
+  if (futuros.length > 0) return { erro: 'tem_futuros', quantidade: futuros.length }
+
+  if (dele.length > 0) {
+    cliente.nome = 'Cliente removido'
+    cliente.telefone = null
+    cliente.email = null
+    cliente.observacoes = null
+    cliente.user_id = null
+    if (!gravarClientes(lista)) return { erro: 'nao_salvou' }
+    return { anonimizado: true, agendamentos: dele.length }
+  }
+
+  if (!gravarClientes(lista.filter((item) => item.id !== id))) return { erro: 'nao_salvou' }
+  return { apagado: true }
 }
