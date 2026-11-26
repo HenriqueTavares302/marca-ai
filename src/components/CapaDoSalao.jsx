@@ -32,7 +32,7 @@ function CapaDoSalao({ nome, descricao, fotoUrl, carregando }) {
 
       <div className="relative flex min-h-56 flex-col justify-between gap-8 px-5 pt-4 pb-7">
         <div className="flex justify-end">
-          <BotaoTema redondo />
+          <BotaoTema naCapa />
         </div>
 
         <div className="flex flex-col gap-3">

@@ -40,6 +40,20 @@ export async function listarServicosPorCategoria() {
     .filter((grupo) => grupo.servicos.length > 0)
 }
 
+export async function listarServicosComVariacoes() {
+  const ativos = await listarServicos()
+  return ativos.map((servico) => ({
+    ...servico,
+    variacoes: servico_variacoes
+      .filter((variacao) => variacao.servico_id === servico.id)
+      .sort((a, b) => a.ordem - b.ordem),
+  }))
+}
+
+export async function listarCategorias() {
+  return categorias
+}
+
 export async function listarServicosPopulares(quantidade) {
   const idsValidos = agendamentos
     .filter((agendamento) => agendamento.status !== 'cancelado')

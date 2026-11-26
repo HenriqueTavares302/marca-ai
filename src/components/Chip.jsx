@@ -17,7 +17,7 @@ function Chip({ children, variante = 'neutro', icone: Icone, aoClicar, seleciona
         type="button"
         onClick={aoClicar}
         aria-pressed={selecionado}
-        className={`inline-flex min-h-12 items-center gap-2 rounded-full border-2 px-5 font-medium ${estilo}`}
+        className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full border-2 px-5 font-medium whitespace-nowrap ${estilo}`}
       >
         {selecionado && <Check className="size-5" aria-hidden="true" />}
         {children}

@@ -4,26 +4,11 @@ import { ArrowRight, CalendarCheck, CalendarPlus, Clock, Lock, MapPin, MessageCi
 import Botao from '../../components/Botao.jsx'
 import CapaDoSalao from '../../components/CapaDoSalao.jsx'
 import Card from '../../components/Card.jsx'
+import Esqueleto from '../../components/Esqueleto.jsx'
+import PrecoDoServico from '../../components/PrecoDoServico.jsx'
 import { buscarSalao, listarHorarioDoSalao, listarServicosPopulares } from '../../data/consultas.js'
-import { formatarDuracao, formatarPreco, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
+import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
 import { agruparHorariosDaSemana, situacaoDoSalao } from '../../utils/horarios.js'
-
-function Esqueleto({ classes }) {
-  return <span className={`block rounded-lg bg-borda motion-safe:animate-pulse ${classes}`} aria-hidden="true" />
-}
-
-function PrecoDoServico({ servico }) {
-  if (servico.tipo_preco === 'consulta' || servico.preco === null) {
-    return <p className="font-semibold">Sob consulta</p>
-  }
-
-  return (
-    <p className="text-right font-semibold">
-      {servico.tipo_preco === 'a_partir' && <span className="block font-normal text-texto-suave">a partir de</span>}
-      {formatarPreco(servico.preco)}
-    </p>
-  )
-}
 
 function StatusDoSalao({ semana, agora }) {
   const situacao = situacaoDoSalao(semana, agora)
@@ -114,7 +99,7 @@ function Inicio() {
                         {formatarDuracao(servico.duracao_min)}
                       </p>
                     </div>
-                    <PrecoDoServico servico={servico} />
+                    <PrecoDoServico tipoPreco={servico.tipo_preco} preco={servico.preco} />
                   </li>
                 ))}
           </ul>
