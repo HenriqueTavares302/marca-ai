@@ -34,6 +34,8 @@ Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servi
   - principal (verde-escuro) `#1F4D3A` — texto branco por cima tem contraste 9,6:1
   - destaque (dourado) `#C9A15B` — só em detalhes (ícones, selos, estrelas); nunca como cor de texto sobre o fundo claro
 - Ter modo escuro.
+- Fontes: Inter no texto, Fraunces nos títulos (h1 a h3), via Google Fonts por enquanto; baixar para dentro do projeto na issue do PWA.
+- Classes de cor do tema (em `src/index.css`, trocam sozinhas entre claro e escuro). As telas usam só estas: `bg-fundo`, `text-texto`, `text-texto-suave`, `bg-superficie`, `border-borda`, `bg-principal`, `text-sobre-principal`, `text-destaque`.
 - Mobile-first, visual limpo e acolhedor, fotos grandes, pouco texto por tela.
 - Acessibilidade: contraste de texto ≥ 4,5:1, botões com no mínimo 48 px de altura, texto do corpo ≥ 16 px, não depender só de cor para mostrar estado (livre, ocupado, confirmado).
 
