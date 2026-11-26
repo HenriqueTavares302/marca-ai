@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { ArrowRight, Check, Info } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
@@ -122,6 +123,8 @@ function AgendarHorario() {
   const [escolhido, setEscolhido] = useState(null)
   const [aviso, setAviso] = useState('')
   const [semVagaNaFaixa, setSemVagaNaFaixa] = useState(false)
+  const location = useLocation()
+  const avisoRecebido = useRef(location.state && location.state.aviso ? location.state.aviso : '')
 
   useEffect(() => {
     async function carregar() {
@@ -168,6 +171,7 @@ function AgendarHorario() {
         } else {
           salvarHorario(null)
           setAviso(
+            avisoRecebido.current ||
             'O horário escolhido antes (' +
               formatarDataCurta(salvo.data) +
               ' · ' +

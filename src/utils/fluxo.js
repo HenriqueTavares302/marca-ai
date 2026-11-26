@@ -22,5 +22,6 @@ export async function carregarResumoDoFluxo() {
     horario,
     quando,
     nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
+    profissionalEscolhidoId: carregarProfissional(),
   }
 }

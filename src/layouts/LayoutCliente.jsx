@@ -16,6 +16,7 @@ const itensDoCliente = [
     comVoltar: true,
     voltarPara: '/agendar/dados',
   },
+  { caminho: '/agendar/sucesso', titulo: 'Confirmado', foraDaBarra: true },
 ]
 
 function LayoutCliente() {

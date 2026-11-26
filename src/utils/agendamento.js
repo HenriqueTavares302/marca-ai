@@ -28,6 +28,27 @@ export function salvarProfissional(id) {
 const chaveDoHorario = 'marca-ai:horario'
 const chaveDosDados = 'marca-ai:dados'
 const chaveDosDadosLembrados = 'marca-ai:cliente-lembrado'
+const chaveDoUltimoAgendamento = 'marca-ai:ultimo-agendamento'
+
+export function salvarUltimoAgendamento(resumo) {
+  try {
+    sessionStorage.setItem(chaveDoUltimoAgendamento, JSON.stringify(resumo))
+  } catch {
+    return
+  }
+}
+
+export function carregarUltimoAgendamento() {
+  const salvo = lerJson(sessionStorage, chaveDoUltimoAgendamento)
+  const valido =
+    salvo &&
+    Number.isInteger(salvo.id) &&
+    typeof salvo.inicio === 'string' &&
+    typeof salvo.fim === 'string' &&
+    Array.isArray(salvo.servicos) &&
+    typeof salvo.profissional === 'string'
+  return valido ? salvo : null
+}
 
 function lerJson(armazenamento, chaveDoItem) {
   try {

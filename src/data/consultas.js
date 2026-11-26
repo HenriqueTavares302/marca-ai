@@ -1,7 +1,8 @@
-import { agendamento_servicos } from './agendamento_servicos.js'
-import { agendamentos } from './agendamentos.js'
+import { agendamento_servicos as itensDeExemplo } from './agendamento_servicos.js'
+import { agendamentos as agendamentosDeExemplo } from './agendamentos.js'
+import { gravarBancoLocal, lerBancoLocal } from './armazenamentoLocal.js'
 import { bloqueios } from './bloqueios.js'
-import { clientes } from './clientes.js'
+import { clientes as clientesDeExemplo } from './clientes.js'
 import { mesmoDia } from './datas.js'
 import { horarios_trabalho } from './horarios_trabalho.js'
 import { profissional_servicos } from './profissional_servicos.js'
@@ -10,6 +11,18 @@ import { salao } from './salao.js'
 import { servico_variacoes } from './servico_variacoes.js'
 import { categorias, servicos } from './servicos.js'
 import { calcularHorariosLivres } from '../utils/horariosLivres.js'
+
+function todosOsAgendamentos() {
+  return [...agendamentosDeExemplo, ...lerBancoLocal().agendamentos]
+}
+
+function todosOsItensDeAgendamento() {
+  return [...itensDeExemplo, ...lerBancoLocal().agendamento_servicos]
+}
+
+function todosOsClientes() {
+  return [...clientesDeExemplo, ...lerBancoLocal().clientes]
+}
 
 export async function buscarSalao() {
   return salao
@@ -51,7 +64,7 @@ export async function listarHorariosLivres(data, profissionalId, duracaoMinutos,
     profissionalIds: candidatos.map((profissional) => profissional.id),
     horariosTrabalho: horarios_trabalho,
     bloqueios,
-    agendamentos,
+    agendamentos: todosOsAgendamentos(),
     agora: Date.now(),
     intervalo: salao.intervalo_minutos,
     antecedencia: salao.antecedencia_minima_minutos,
@@ -103,11 +116,11 @@ export async function listarCategorias() {
 }
 
 export async function listarServicosPopulares(quantidade) {
-  const idsValidos = agendamentos
+  const idsValidos = todosOsAgendamentos()
     .filter((agendamento) => agendamento.status !== 'cancelado')
     .map((agendamento) => agendamento.id)
   const contagem = {}
-  for (const item of agendamento_servicos) {
+  for (const item of todosOsItensDeAgendamento()) {
     if (!idsValidos.includes(item.agendamento_id)) continue
     contagem[item.servico_id] = (contagem[item.servico_id] || 0) + 1
   }
@@ -167,15 +180,15 @@ export async function listarBloqueiosDoDia(profissionalId, data) {
 }
 
 export async function listarClientes() {
-  return [...clientes].sort((a, b) => a.nome.localeCompare(b.nome))
+  return todosOsClientes().sort((a, b) => a.nome.localeCompare(b.nome))
 }
 
 export async function buscarCliente(id) {
-  return clientes.find((cliente) => cliente.id === id) || null
+  return todosOsClientes().find((cliente) => cliente.id === id) || null
 }
 
 function completarAgendamento(agendamento) {
-  const itens = agendamento_servicos
+  const itens = todosOsItensDeAgendamento()
     .filter((item) => item.agendamento_id === agendamento.id)
     .map((item) => ({
       ...item,
@@ -185,7 +198,7 @@ function completarAgendamento(agendamento) {
 
   return {
     ...agendamento,
-    cliente: clientes.find((cliente) => cliente.id === agendamento.cliente_id),
+    cliente: todosOsClientes().find((cliente) => cliente.id === agendamento.cliente_id),
     profissional: profissionais.find((profissional) => profissional.id === agendamento.profissional_id),
     servicos: itens,
   }
@@ -196,7 +209,7 @@ function ordenarPorInicio(a, b) {
 }
 
 export async function agendamentosDoDia(data, profissionalId) {
-  return agendamentos
+  return todosOsAgendamentos()
     .filter((agendamento) => mesmoDia(agendamento.inicio, data))
     .filter((agendamento) => !profissionalId || agendamento.profissional_id === profissionalId)
     .sort(ordenarPorInicio)
@@ -204,8 +217,85 @@ export async function agendamentosDoDia(data, profissionalId) {
 }
 
 export async function agendamentosDoCliente(clienteId) {
-  return agendamentos
+  return todosOsAgendamentos()
     .filter((agendamento) => agendamento.cliente_id === clienteId)
     .sort(ordenarPorInicio)
     .map(completarAgendamento)
+}
+
+function proximoId(lista) {
+  return lista.reduce((maior, item) => Math.max(maior, Number(item.id) || 0), 0) + 1
+}
+
+function seSobrepoe(inicioA, fimA, inicioB, fimB) {
+  return inicioA < fimB && inicioB < fimA
+}
+
+export async function criarAgendamento({ nome, telefone, profissionalId, inicio, itens, observacoes, formaPagamento }) {
+  const banco = lerBancoLocal()
+  const duracao = itens.reduce((total, item) => total + item.duracao_min, 0)
+  const inicioMs = new Date(inicio).getTime()
+  const fimMs = inicioMs + duracao * 60000
+
+  const ocupado = todosOsAgendamentos().some(
+    (agendamento) =>
+      agendamento.profissional_id === profissionalId &&
+      agendamento.status !== 'cancelado' &&
+      seSobrepoe(inicioMs, fimMs, new Date(agendamento.inicio).getTime(), new Date(agendamento.fim).getTime()),
+  )
+  if (ocupado) {
+    return { erro: 'horario_ocupado' }
+  }
+
+  const agora = new Date().toISOString()
+  let cliente = todosOsClientes().find((item) => item.telefone === telefone)
+  if (!cliente) {
+    cliente = {
+      id: proximoId(todosOsClientes()),
+      user_id: null,
+      nome,
+      telefone,
+      email: null,
+      observacoes: null,
+      criado_em: agora,
+    }
+    banco.clientes.push(cliente)
+  }
+
+  const precosConhecidos = itens.filter((item) => item.preco !== null).map((item) => item.preco)
+  const agendamento = {
+    id: proximoId(todosOsAgendamentos()),
+    cliente_id: cliente.id,
+    profissional_id: profissionalId,
+    inicio: new Date(inicioMs).toISOString(),
+    fim: new Date(fimMs).toISOString(),
+    status: 'agendado',
+    valor_total: precosConhecidos.length > 0 ? precosConhecidos.reduce((total, preco) => total + preco, 0) : null,
+    forma_pagamento: formaPagamento === 'pix' ? 'pix' : 'salao',
+    pago: false,
+    observacoes: observacoes || null,
+    criado_em: agora,
+  }
+  banco.agendamentos.push(agendamento)
+
+  let idDoItem = proximoId(todosOsItensDeAgendamento())
+  for (const item of itens) {
+    banco.agendamento_servicos.push({
+      id: idDoItem,
+      agendamento_id: agendamento.id,
+      servico_id: item.servico_id,
+      variacao_id: item.variacao_id,
+      preco: item.preco,
+      duracao_min: item.duracao_min,
+    })
+    idDoItem++
+  }
+
+  try {
+    gravarBancoLocal(banco)
+  } catch {
+    return { erro: 'nao_salvou' }
+  }
+
+  return { agendamento: completarAgendamento(agendamento) }
 }

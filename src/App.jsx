@@ -4,11 +4,12 @@ import LayoutSalao from './layouts/LayoutSalao.jsx'
 import Componentes from './pages/Componentes.jsx'
 import NaoEncontrada from './pages/NaoEncontrada.jsx'
 import Agendar from './pages/cliente/Agendar.jsx'
+import AgendarConfirmacao from './pages/cliente/AgendarConfirmacao.jsx'
 import AgendarDados from './pages/cliente/AgendarDados.jsx'
 import AgendarHorario from './pages/cliente/AgendarHorario.jsx'
+import AgendarSucesso from './pages/cliente/AgendarSucesso.jsx'
 import Inicio from './pages/cliente/Inicio.jsx'
 import MeusAgendamentos from './pages/cliente/MeusAgendamentos.jsx'
-import PassoEmConstrucao from './pages/cliente/PassoEmConstrucao.jsx'
 import ServicosDoCliente from './pages/cliente/Servicos.jsx'
 import Agenda from './pages/salao/Agenda.jsx'
 import Clientes from './pages/salao/Clientes.jsx'
@@ -24,10 +25,8 @@ function App() {
         <Route path="/agendar" element={<Agendar />} />
         <Route path="/agendar/horario" element={<AgendarHorario />} />
         <Route path="/agendar/dados" element={<AgendarDados />} />
-        <Route
-          path="/agendar/confirmacao"
-          element={<PassoEmConstrucao passo={4} texto="Aqui você vai revisar tudo e confirmar o agendamento." />}
-        />
+        <Route path="/agendar/confirmacao" element={<AgendarConfirmacao />} />
+        <Route path="/agendar/sucesso" element={<AgendarSucesso />} />
         <Route path="/meus-agendamentos" element={<MeusAgendamentos />} />
       </Route>
 
