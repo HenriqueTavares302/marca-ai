@@ -2,6 +2,8 @@
 
 App de agendamento para salão de cabeleireiro: o cliente vê os serviços com preço e marca o horário pelo celular, e o salão organiza a agenda do dia.
 
+Versão de teste: https://marca-ai-nine.vercel.app
+
 ## Tecnologias
 
 - React + Vite
