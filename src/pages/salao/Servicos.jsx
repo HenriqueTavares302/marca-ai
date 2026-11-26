@@ -8,7 +8,8 @@ import Chip from '../../components/Chip.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import { alterarOrdemServico, listarServicosDoSalao } from '../../data/consultas.js'
 import { semAcento } from '../../utils/cliente.js'
-import { formatarDuracao, formatarPrecoDoServico } from '../../utils/formatos.js'
+import { formatarDuracao } from '../../utils/formatos.js'
+import { textoDoPrecoParaMostrar } from '../../utils/precos.js'
 
 function textoDaDuracao(servico) {
   if (servico.variacoes.length === 0) return formatarDuracao(servico.duracao_min)
@@ -45,7 +46,7 @@ function ItemDoServico({ servico, primeiro, ultimo, mostrarOrdem, aoMover }) {
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="font-semibold">{servico.nome}</span>
           <span className="text-texto-suave">
-            {textoDaDuracao(servico)} · {formatarPrecoDoServico(servico)}
+            {textoDaDuracao(servico)} · {textoDoPrecoParaMostrar(servico)}
           </span>
           {servico.variacoes.length > 0 && (
             <span className="text-texto-suave">

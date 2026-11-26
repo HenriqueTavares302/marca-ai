@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react'
 import { Check, X } from 'lucide-react'
 import Botao from './Botao.jsx'
 import { formatarDuracao, formatarPreco } from '../utils/formatos.js'
+import { precoParaMostrar } from '../utils/precos.js'
 
-function PainelDeTamanho({ servico, variacaoAtualId, aoEscolher, aoRemover, aoFechar }) {
+function PainelDeTamanho({ servico, variacaoAtualId, aoEscolher, aoRemover, aoFechar, profissionalId = null }) {
   const dialogo = useRef(null)
 
   useEffect(() => {
@@ -47,6 +48,7 @@ function PainelDeTamanho({ servico, variacaoAtualId, aoEscolher, aoRemover, aoFe
           <ul className="flex flex-col gap-3">
             {servico.variacoes.map((variacao) => {
               const escolhida = variacao.id === variacaoAtualId
+              const mostrar = precoParaMostrar(servico, variacao, profissionalId)
               const corDaBorda = escolhida ? 'border-principal' : 'border-borda'
 
               return (
@@ -70,10 +72,10 @@ function PainelDeTamanho({ servico, variacaoAtualId, aoEscolher, aoRemover, aoFe
                       <span className="block text-texto-suave">{formatarDuracao(variacao.duracao_min)}</span>
                     </span>
                     <span className="text-right font-semibold">
-                      {servico.tipo_preco === 'a_partir' && (
+                      {mostrar.tipoPreco === 'a_partir' && (
                         <span className="block font-normal text-texto-suave">a partir de</span>
                       )}
-                      {formatarPreco(variacao.preco)}
+                      {mostrar.preco === null ? 'Sob consulta' : formatarPreco(mostrar.preco)}
                     </span>
                   </button>
                 </li>

@@ -12,11 +12,14 @@ import { listarCategorias, listarProfissionaisComServicos, listarServicosComVari
 import {
   carregarEscolha,
   carregarProfissional,
+  faixaDosProfissionais,
   juntarComE,
   profissionaisQueFazemTudo,
   resumirEscolha,
   salvarProfissional,
   servicosQueFaltam,
+  textoDaFaixa,
+  textoDoValorTotal,
 } from '../../utils/agendamento.js'
 
 function descreverEspecialidades(profissional, servicos, categorias) {
@@ -57,7 +60,7 @@ function Agendar() {
         setProfissionalId(salvo)
       }
 
-      setDados({ servicos, profissionais, categorias, resumo, possiveis })
+      setDados({ servicos, profissionais, categorias, resumo, possiveis, escolha: carregarEscolha() })
     }
     carregar()
   }, [])
@@ -80,7 +83,7 @@ function Agendar() {
     )
   }
 
-  const { servicos, profissionais, categorias, resumo, possiveis } = dados
+  const { servicos, profissionais, categorias, resumo, possiveis, escolha } = dados
 
   if (resumo.quantidade === 0) {
     return <SemServicosEscolhidos />
@@ -88,11 +91,17 @@ function Agendar() {
 
   const escolhido = possiveis.find((profissional) => profissional.id === profissionalId)
   const nomeDoProfissional = escolhido ? escolhido.nome : 'Qualquer profissional'
+  const textoDaFaixaDeTodos = textoDaFaixa(faixaDosProfissionais(escolha, servicos, possiveis))
+  const totalCom = (id) => textoDoValorTotal(resumirEscolha(escolha, servicos, id))
 
   return (
     <>
       <IndicadorDePassos passo={1} />
-      <ResumoDosServicos resumo={resumo} nomeDoProfissional={nomeDoProfissional} />
+      <ResumoDosServicos
+        resumo={resumo}
+        nomeDoProfissional={nomeDoProfissional}
+        textoDoValor={escolhido ? totalCom(escolhido.id) : textoDaFaixaDeTodos}
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl font-semibold">Com quem você quer agendar?</h2>
@@ -128,6 +137,7 @@ function Agendar() {
                   qualquer
                   nome="Qualquer profissional"
                   detalhe="Mostramos os horários de todos"
+                  valor={textoDaFaixaDeTodos}
                   escolhido={!escolhido}
                   aoEscolher={() => escolher(null)}
                 />
@@ -138,6 +148,7 @@ function Agendar() {
                     nome={profissional.nome}
                     detalhe={descreverEspecialidades(profissional, servicos, categorias)}
                     fotoUrl={profissional.foto_url}
+                    valor={totalCom(profissional.id)}
                     escolhido={Boolean(escolhido && escolhido.id === profissional.id)}
                     aoEscolher={() => escolher(profissional.id)}
                   />

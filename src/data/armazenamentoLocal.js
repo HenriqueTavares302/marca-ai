@@ -21,6 +21,7 @@ function catalogoOuNulo(valor) {
     servicos: listaOuVazia(valor.servicos),
     servico_variacoes: listaOuVazia(valor.servico_variacoes),
     profissional_servicos: listaOuVazia(valor.profissional_servicos),
+    profissional_variacoes: listaOuVazia(valor.profissional_variacoes),
     categorias: valor.categorias.filter((categoria) => typeof categoria === 'string'),
     variacoes_removidas: listaOuVazia(valor.variacoes_removidas),
   }

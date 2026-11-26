@@ -22,10 +22,13 @@ import {
   carregarHorario,
   carregarRemarcacao,
   carregarProfissional,
+  faixaDosProfissionais,
   profissionaisQueFazemTudo,
   resumirEscolha,
   salvarHorario,
   salvarProfissional,
+  textoDaFaixa,
+  textoDoValorTotal,
 } from '../../utils/agendamento.js'
 import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
@@ -95,6 +98,8 @@ function AgendarHorario() {
       const remarcacao = carregarRemarcacao()
       const novosDados = {
         resumo,
+        escolha: carregarEscolha(),
+        servicos,
         hoje,
         dias,
         possiveis,
@@ -231,11 +236,21 @@ function AgendarHorario() {
   }
 
   const escolhidoNesteDia = escolhido && escolhido.data === dataSelecionada ? escolhido : null
+  const faixa = faixaDosProfissionais(dados.escolha, dados.servicos, dados.possiveis)
+  const idDoTotal = escolhido ? escolhido.profissionalId : dados.profissionalId
+  const textoDoTotal = idDoTotal
+    ? textoDoValorTotal(resumirEscolha(dados.escolha, dados.servicos, idDoTotal))
+    : textoDaFaixa(faixa)
+  const totalMudaComOProfissional = !dados.profissionalId && faixa.temValor && faixa.menor !== faixa.maior
 
   return (
     <>
       {dados.remarcacao ? <AvisoDeRemarcacao inicioAnterior={dados.remarcacao.inicioAnterior} /> : <IndicadorDePassos passo={2} />}
-      <ResumoDosServicos resumo={dados.resumo} nomeDoProfissional={dados.nomeDoProfissional} />
+      <ResumoDosServicos
+        resumo={dados.resumo}
+        nomeDoProfissional={dados.nomeDoProfissional}
+        textoDoValor={dados.remarcacao ? undefined : textoDoTotal}
+      />
 
       {aviso && (
         <p role="status" className="flex items-start gap-2 rounded-2xl border-2 border-principal bg-superficie p-3">
@@ -303,7 +318,13 @@ function AgendarHorario() {
                 {formatarDataCurta(escolhido.data)} · {formatarMinutos(escolhido.minutos)} às{' '}
                 {formatarMinutos(escolhido.minutos + dados.duracao)}
               </span>
-              <span className="block text-texto-suave">com {dados.nomes[escolhido.profissionalId]}</span>
+              <span className="block text-texto-suave" aria-live="polite">
+                com {dados.nomes[escolhido.profissionalId]}
+                {!dados.remarcacao && <> · {textoDoTotal}</>}
+              </span>
+              {totalMudaComOProfissional && !dados.remarcacao && (
+                <span className="block text-texto-suave">O total muda conforme o profissional do horário.</span>
+              )}
             </p>
             <Botao para={dados.remarcacao ? '/agendar/confirmacao' : '/agendar/dados'} larguraTotal grande>
               Continuar

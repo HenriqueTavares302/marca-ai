@@ -6,6 +6,7 @@ import { clientes as clientesDeExemplo } from './clientes.js'
 import { mesmoDia } from './datas.js'
 import { horarios_trabalho as horariosDeExemplo } from './horarios_trabalho.js'
 import { profissional_servicos as ligacoesDeExemplo } from './profissional_servicos.js'
+import { profissional_variacoes as precosDeVariacaoDeExemplo } from './profissional_variacoes.js'
 import { profissionais } from './profissionais.js'
 import { salao } from './salao.js'
 import { servico_variacoes as variacoesDeExemplo } from './servico_variacoes.js'
@@ -74,9 +75,60 @@ function lerCatalogo() {
     servicos: servicosDeExemplo.map((servico) => ({ ...servico })),
     servico_variacoes: variacoesDeExemplo.map((variacao) => ({ ...variacao })),
     profissional_servicos: ligacoesDeExemplo.map((ligacao) => ({ ...ligacao })),
+    profissional_variacoes: precosDeVariacaoDeExemplo.map((preco) => ({ ...preco })),
     categorias: [...categoriasDeExemplo],
     variacoes_removidas: [],
   }
+}
+
+function idsAtivos() {
+  return profissionais.filter((profissional) => profissional.ativo).map((profissional) => profissional.id)
+}
+
+function comPrecosPorProfissional(catalogo, servico) {
+  const ativos = idsAtivos()
+  const ligacoes = catalogo.profissional_servicos.filter(
+    (ligacao) => ligacao.servico_id === servico.id && ativos.includes(ligacao.profissional_id),
+  )
+  const precosDoServico = {}
+  for (const ligacao of ligacoes) {
+    if (typeof ligacao.preco === 'number') precosDoServico[ligacao.profissional_id] = ligacao.preco
+  }
+  return {
+    ...servico,
+    profissional_ids: ligacoes.map((ligacao) => ligacao.profissional_id),
+    precos_por_profissional: precosDoServico,
+    variacoes: catalogo.servico_variacoes
+      .filter((variacao) => variacao.servico_id === servico.id)
+      .sort((a, b) => a.ordem - b.ordem)
+      .map((variacao) => {
+        const precosDaVariacao = {}
+        for (const linha of catalogo.profissional_variacoes) {
+          const fazOServico = ligacoes.some((ligacao) => ligacao.profissional_id === linha.profissional_id)
+          if (linha.variacao_id === variacao.id && fazOServico && typeof linha.preco === 'number') {
+            precosDaVariacao[linha.profissional_id] = linha.preco
+          }
+        }
+        return { ...variacao, precos_por_profissional: precosDaVariacao }
+      }),
+  }
+}
+
+function precoNoCatalogo(catalogo, servicoId, variacaoId, profissionalId) {
+  const servico = catalogo.servicos.find((item) => item.id === servicoId)
+  if (!servico || servico.tipo_preco === 'consulta') return null
+  if (variacaoId) {
+    const proprio = catalogo.profissional_variacoes.find(
+      (linha) => linha.variacao_id === variacaoId && linha.profissional_id === profissionalId,
+    )
+    if (proprio && typeof proprio.preco === 'number') return proprio.preco
+    const variacao = catalogo.servico_variacoes.find((item) => item.id === variacaoId)
+    return variacao ? variacao.preco : null
+  }
+  const ligacao = catalogo.profissional_servicos.find(
+    (item) => item.servico_id === servicoId && item.profissional_id === profissionalId,
+  )
+  return ligacao && typeof ligacao.preco === 'number' ? ligacao.preco : servico.preco
 }
 
 function servicoIdsDoProfissional(catalogo, profissionalId) {
@@ -203,13 +255,8 @@ export async function listarServicosPorCategoria() {
 
 export async function listarServicosComVariacoes() {
   const ativos = await listarServicos()
-  const variacoes = lerCatalogo().servico_variacoes
-  return ativos.map((servico) => ({
-    ...servico,
-    variacoes: variacoes
-      .filter((variacao) => variacao.servico_id === servico.id)
-      .sort((a, b) => a.ordem - b.ordem),
-  }))
+  const catalogo = lerCatalogo()
+  return ativos.map((servico) => comPrecosPorProfissional(catalogo, servico))
 }
 
 export async function listarCategorias() {
@@ -227,8 +274,9 @@ export async function listarServicosPopulares(quantidade) {
     contagem[item.servico_id] = (contagem[item.servico_id] || 0) + 1
   }
   const ativos = await listarServicos()
+  const catalogo = lerCatalogo()
   return ativos
-    .map((servico) => ({ ...servico, vezes: contagem[servico.id] || 0 }))
+    .map((servico) => ({ ...comPrecosPorProfissional(catalogo, servico), vezes: contagem[servico.id] || 0 }))
     .sort((a, b) => b.vezes - a.vezes || a.ordem - b.ordem)
     .slice(0, quantidade)
 }
@@ -442,6 +490,13 @@ export async function remarcarAgendamento(id, profissionalId, novoInicio) {
   )
   if (ocupado) return { erro: 'horario_ocupado' }
 
+  if (agendamento.profissional_id !== profissionalId) {
+    const catalogo = lerCatalogo()
+    const itens = banco.agendamento_servicos.filter((item) => item.agendamento_id === id)
+    for (const item of itens) item.preco = precoNoCatalogo(catalogo, item.servico_id, item.variacao_id, profissionalId)
+    const precos = itens.filter((item) => item.preco !== null).map((item) => item.preco)
+    agendamento.valor_total = precos.length > 0 ? precos.reduce((total, preco) => total + preco, 0) : null
+  }
   agendamento.profissional_id = profissionalId
   agendamento.inicio = new Date(inicioMs).toISOString()
   agendamento.fim = new Date(fimMs).toISOString()
@@ -566,10 +621,7 @@ function servicosUsados() {
 
 function completarServicoDoSalao(catalogo, servico, usados) {
   return {
-    ...servico,
-    variacoes: catalogo.servico_variacoes
-      .filter((variacao) => variacao.servico_id === servico.id)
-      .sort((a, b) => a.ordem - b.ordem),
+    ...comPrecosPorProfissional(catalogo, servico),
     profissional_ids: catalogo.profissional_servicos
       .filter((ligacao) => ligacao.servico_id === servico.id)
       .map((ligacao) => ligacao.profissional_id),
@@ -683,9 +735,37 @@ export async function salvarServico(dados) {
     ...novasVariacoes,
   ]
 
+  const precosInformados = Array.isArray(dados.precos_profissionais) ? dados.precos_profissionais : []
+  const precoInformado = (profissionalId) =>
+    precosInformados.find((item) => item.profissional_id === profissionalId) || { preco: null, variacoes: [] }
+  const aceitaPrecoProprio = servico.tipo_preco !== 'consulta'
+
   catalogo.profissional_servicos = [
     ...catalogo.profissional_servicos.filter((ligacao) => ligacao.servico_id !== id),
-    ...profissionalIds.map((profissionalId) => ({ profissional_id: profissionalId, servico_id: id })),
+    ...profissionalIds.map((profissionalId) => ({
+      profissional_id: profissionalId,
+      servico_id: id,
+      preco: aceitaPrecoProprio && !comVariacoes && typeof precoInformado(profissionalId).preco === 'number'
+        ? precoInformado(profissionalId).preco
+        : null,
+    })),
+  ]
+
+  const idsDeVariacoesDoServico = [...antigas.map((variacao) => variacao.id), ...novasVariacoes.map((variacao) => variacao.id)]
+  const novosPrecosDeVariacao = []
+  if (aceitaPrecoProprio) {
+    for (const profissionalId of profissionalIds) {
+      const precos = precoInformado(profissionalId).variacoes || []
+      novasVariacoes.forEach((variacao, indice) => {
+        if (typeof precos[indice] === 'number') {
+          novosPrecosDeVariacao.push({ profissional_id: profissionalId, variacao_id: variacao.id, preco: precos[indice] })
+        }
+      })
+    }
+  }
+  catalogo.profissional_variacoes = [
+    ...catalogo.profissional_variacoes.filter((linha) => !idsDeVariacoesDoServico.includes(linha.variacao_id)),
+    ...novosPrecosDeVariacao,
   ]
 
   if (!gravarCatalogo(catalogo)) return { erro: 'nao_salvou' }
@@ -721,8 +801,14 @@ export async function apagarServico(id) {
   if (!servico) return { erro: 'nao_encontrado' }
   if (servicosUsados().some((item) => item.servico_id === id)) return { erro: 'usado' }
 
+  const idsDasVariacoes = catalogo.servico_variacoes
+    .filter((variacao) => variacao.servico_id === id)
+    .map((variacao) => variacao.id)
   catalogo.servicos = catalogo.servicos.filter((item) => item.id !== id)
   catalogo.servico_variacoes = catalogo.servico_variacoes.filter((variacao) => variacao.servico_id !== id)
+  catalogo.profissional_variacoes = catalogo.profissional_variacoes.filter(
+    (linha) => !idsDasVariacoes.includes(linha.variacao_id),
+  )
   catalogo.profissional_servicos = catalogo.profissional_servicos.filter((ligacao) => ligacao.servico_id !== id)
   catalogo.categorias = catalogo.categorias.filter(
     (categoria) => categoria !== servico.categoria || catalogo.servicos.some((item) => item.categoria === categoria),

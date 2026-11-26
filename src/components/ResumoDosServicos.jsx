@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react'
 import { formatarDuracao } from '../utils/formatos.js'
 import { textoDaQuantidade, textoDoValorTotal } from '../utils/agendamento.js'
 
-function ResumoDosServicos({ resumo, nomeDoProfissional, quando }) {
+function ResumoDosServicos({ resumo, nomeDoProfissional, quando, textoDoValor }) {
   return (
     <details className="group rounded-2xl border-2 border-borda bg-superficie">
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
@@ -11,7 +11,7 @@ function ResumoDosServicos({ resumo, nomeDoProfissional, quando }) {
           <span className="block font-semibold">
             {textoDaQuantidade(resumo.quantidade)} · {formatarDuracao(resumo.duracaoTotal)}
           </span>
-          <span className="block text-texto-suave">{textoDoValorTotal(resumo)}</span>
+          <span className="block text-texto-suave">{textoDoValor || textoDoValorTotal(resumo)}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1 text-principal">
           <span className="group-open:hidden">Ver</span>

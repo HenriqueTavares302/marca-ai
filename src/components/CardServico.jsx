@@ -1,6 +1,7 @@
 import { Check, Clock, Droplets, Palette, Plus, Ruler, Scissors, Sparkles, Wind } from 'lucide-react'
 import PrecoDoServico from './PrecoDoServico.jsx'
 import { formatarDuracao } from '../utils/formatos.js'
+import { precoParaMostrar } from '../utils/precos.js'
 
 const iconesPorCategoria = {
   Corte: Scissors,
@@ -41,7 +42,7 @@ function CardServico({ servico, itemEscolhido, aoTocar }) {
   const variacao = itemEscolhido ? itemEscolhido.variacao : null
   const temVariacoes = servico.variacoes.length > 0
   const nome = variacao ? servico.nome + ' · ' + variacao.nome : servico.nome
-  const preco = variacao ? variacao.preco : servico.preco
+  const mostrar = precoParaMostrar(servico, variacao)
   const Icone = iconesPorCategoria[servico.categoria] || Scissors
   const corDaBorda = selecionado ? 'border-principal' : 'border-borda'
 
@@ -64,7 +65,7 @@ function CardServico({ servico, itemEscolhido, aoTocar }) {
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex items-start justify-between gap-3">
           <span className="font-semibold">{nome}</span>
-          <PrecoDoServico tipoPreco={servico.tipo_preco} preco={preco} />
+          <PrecoDoServico tipoPreco={mostrar.tipoPreco} preco={mostrar.preco} />
         </span>
         <span className="line-clamp-2 text-texto-suave">{servico.descricao}</span>
         <span className="mt-1 flex flex-wrap items-center justify-between gap-2">

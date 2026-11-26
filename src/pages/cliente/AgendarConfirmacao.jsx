@@ -21,7 +21,10 @@ import {
   carregarDadosDoCliente,
   carregarRemarcacao,
   encerrarRemarcacao,
+  carregarEscolha,
   limparEscolha,
+  resumirEscolha,
+  salvarHorario,
   salvarUltimoAgendamento,
   textoDaQuantidade,
   textoDoValorTotal,
@@ -31,6 +34,7 @@ import { carregarResumoDoFluxo } from '../../utils/fluxo.js'
 import { formatarDataLonga, formatarDuracao, formatarPreco } from '../../utils/formatos.js'
 import { instanteEmSaoPaulo, partesEmSaoPaulo } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
+import { textoDoValor, tipoDoPrecoGuardado, valorDoAgendamento } from '../../utils/agenda.js'
 
 function Bloco({ titulo, para, children }) {
   return (
@@ -96,6 +100,7 @@ function AgendarConfirmacao() {
   const [formaPagamento, setFormaPagamento] = useState('salao')
   const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState('')
+  const [avisoDeTroca, setAvisoDeTroca] = useState('')
   const enviando = useRef(false)
 
   useEffect(() => {
@@ -138,6 +143,25 @@ function AgendarConfirmacao() {
     if (!vaga) {
       irParaOPasso2()
       return
+    }
+    if (vaga.profissionalId !== horario.profissionalId) {
+      const novoResumo = resumirEscolha(carregarEscolha(), dados.servicos, vaga.profissionalId)
+      const novoHorario = { ...horario, profissionalId: vaga.profissionalId }
+      salvarHorario(novoHorario)
+      if (textoDoValorTotal(novoResumo) !== textoDoValorTotal(resumo)) {
+        const fluxo = await carregarResumoDoFluxo()
+        setDados({ ...dados, ...fluxo })
+        setAvisoDeTroca(
+          'O horário passou para ' +
+            fluxo.nomeDoProfissional.split(' ')[0] +
+            '. O total agora é ' +
+            textoDoValorTotal(fluxo.resumo) +
+            '. Confira e confirme de novo.',
+        )
+        setConfirmando(false)
+        enviando.current = false
+        return
+      }
     }
     const inicio = new Date(instanteEmSaoPaulo(horario.data, horario.minutos)).toISOString()
 
@@ -198,7 +222,10 @@ function AgendarConfirmacao() {
       fim: agendamento.fim,
       servicos: dados.resumo.itens.map((item) => item.nome),
       profissional: agendamento.profissional.nome,
-      valor: textoDoValorTotal(dados.resumo),
+      valor:
+        dados.original && dados.original.profissional_id === agendamento.profissional_id
+          ? textoDoValor(valorDoAgendamento(dados.original))
+          : textoDoValorTotal(dados.resumo),
       formaPagamento: agendamento.forma_pagamento,
       remarcado,
     })
@@ -240,11 +267,33 @@ function AgendarConfirmacao() {
     return <AvisoParaVoltar texto="Falta informar seu nome e celular." botao="Informar meus dados" para="/agendar/dados" />
   }
 
-  const valorACombinar = resumo.aPartir || resumo.aCombinar
-  const valorPrincipal = resumo.temValor
-    ? (resumo.aPartir ? 'a partir de ' : '') + formatarPreco(resumo.valorTotal)
-    : 'Valor a combinar'
-  const valorExtra = resumo.temValor && resumo.aCombinar ? '+ valor a combinar' : ''
+  const mesmoProfissional = Boolean(original) && original.profissional_id === horario.profissionalId
+  const trocouDeProfissional = Boolean(original) && !mesmoProfissional
+  const itensParaMostrar = mesmoProfissional
+    ? original.servicos.map((item) => ({
+        chave: item.id,
+        nome: item.variacao ? item.servico.nome + ' · ' + item.variacao.nome : item.servico.nome,
+        duracao: item.duracao_min,
+        tipoPreco: tipoDoPrecoGuardado(item),
+        preco: item.preco,
+      }))
+    : resumo.itens.map((item) => ({
+        chave: item.servico.id,
+        nome: item.nome,
+        duracao: item.duracao_min,
+        tipoPreco: item.servico.tipo_preco,
+        preco: item.preco,
+      }))
+  const valorDoOriginal = original ? valorDoAgendamento(original) : null
+  const valorACombinar = mesmoProfissional
+    ? valorDoOriginal.aPartir || valorDoOriginal.aCombinar
+    : resumo.aPartir || resumo.aCombinar
+  const valorPrincipal = mesmoProfissional
+    ? textoDoValor(valorDoOriginal)
+    : resumo.temValor
+      ? (resumo.aPartir ? 'a partir de ' : '') + formatarPreco(resumo.valorTotal)
+      : 'Valor a combinar'
+  const valorExtra = !mesmoProfissional && resumo.temValor && resumo.aCombinar ? '+ valor a combinar' : ''
 
   return (
     <>
@@ -259,13 +308,13 @@ function AgendarConfirmacao() {
 
       <Bloco titulo="Serviços" para={original ? null : '/servicos'}>
         <ul className="divide-y divide-borda">
-          {resumo.itens.map((item) => (
-            <li key={item.servico.id} className="flex items-start justify-between gap-3 py-2">
+          {itensParaMostrar.map((item) => (
+            <li key={item.chave} className="flex items-start justify-between gap-3 py-2">
               <span>
                 <span className="block">{item.nome}</span>
-                <span className="block text-texto-suave">{formatarDuracao(item.duracao_min)}</span>
+                <span className="block text-texto-suave">{formatarDuracao(item.duracao)}</span>
               </span>
-              <PrecoDoServico tipoPreco={item.servico.tipo_preco} preco={item.preco} />
+              <PrecoDoServico tipoPreco={item.tipoPreco} preco={item.preco} />
             </li>
           ))}
         </ul>
@@ -286,6 +335,18 @@ function AgendarConfirmacao() {
             )}
           </p>
         </div>
+        {trocouDeProfissional && (
+          <p className="flex items-start gap-2 rounded-2xl border-2 border-principal p-3" role="status">
+            <Info className="mt-0.5 size-5 shrink-0 text-principal" aria-hidden="true" />
+            <span>
+              Antes: {textoDoValor(valorDoOriginal)} · Agora com {dados.nomeDoProfissional.split(' ')[0]}:{' '}
+              <span className="font-semibold">{textoDoValorTotal(resumo)}</span>
+            </span>
+          </p>
+        )}
+        {mesmoProfissional && (
+          <p className="text-texto-suave">Mesmo profissional: o valor da primeira marcação continua valendo.</p>
+        )}
         {valorACombinar && (
           <p className="flex items-start gap-2 text-texto-suave">
             <Info className="mt-0.5 size-5 shrink-0" aria-hidden="true" />O valor final é confirmado no salão.
@@ -359,6 +420,12 @@ function AgendarConfirmacao() {
       )}
 
       <RodapeFixo>
+        {avisoDeTroca && (
+          <p className="flex items-start gap-2 font-semibold text-principal" role="alert">
+            <Info className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+            {avisoDeTroca}
+          </p>
+        )}
         {erro && <MensagemErro texto={erro} />}
         <Botao aoClicar={confirmar} carregando={confirmando} larguraTotal grande>
           {confirmando ? 'Confirmando...' : original ? 'Confirmar remarcação' : 'Confirmar agendamento'}

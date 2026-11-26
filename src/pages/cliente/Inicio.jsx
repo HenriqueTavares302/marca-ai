@@ -9,6 +9,7 @@ import PrecoDoServico from '../../components/PrecoDoServico.jsx'
 import { buscarSalao, listarHorarioDoSalao, listarServicosPopulares } from '../../data/consultas.js'
 import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
 import { partesEmSaoPaulo } from '../../utils/fuso.js'
+import { precoParaMostrar } from '../../utils/precos.js'
 import { agruparHorariosDaSemana, situacaoDoSalao } from '../../utils/horarios.js'
 import { profissionalLogado } from '../../utils/sessao.js'
 
@@ -101,7 +102,7 @@ function Inicio() {
                         {formatarDuracao(servico.duracao_min)}
                       </p>
                     </div>
-                    <PrecoDoServico tipoPreco={servico.tipo_preco} preco={servico.preco} />
+                    <PrecoDoServico {...precoParaMostrar(servico)} />
                   </li>
                 ))}
           </ul>

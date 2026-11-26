@@ -19,6 +19,12 @@ export function lerPreco(texto) {
   return Number.isFinite(valor) ? valor : null
 }
 
+export function lerPrecoOpcional(texto) {
+  if (String(texto).trim() === '') return null
+  const valor = lerPreco(texto)
+  return valor === null ? NaN : valor
+}
+
 export function lerMinutos(texto) {
   const limpo = String(texto).trim()
   if (!/^\d{1,4}$/.test(limpo)) return null
@@ -88,6 +94,30 @@ export function errosDoServico(dados) {
   if (errosDasVariacoes.some((erro) => Object.keys(erro).length > 0)) erros.variacoes = errosDasVariacoes
 
   if (dados.profissional_ids.length === 0) erros.profissionais = 'Marque pelo menos um profissional.'
+
+  const precosProprios = Array.isArray(dados.precos_profissionais) ? dados.precos_profissionais : []
+  const consulta = dados.variacoes.length === 0 && dados.tipo_preco === 'consulta'
+  if (!consulta) {
+    const errosDosPrecos = {}
+    for (const proprio of precosProprios) {
+      if (!dados.profissional_ids.includes(proprio.profissional_id)) continue
+      const erro = {}
+      if (dados.variacoes.length === 0 && proprio.preco !== null && proprio.preco !== undefined) {
+        const mensagem = erroDoPreco(Number.isNaN(proprio.preco) ? null : proprio.preco)
+        if (mensagem) erro.preco = mensagem
+      }
+      if (dados.variacoes.length > 0) {
+        const daVariacao = dados.variacoes.map((_, indice) => {
+          const preco = (proprio.variacoes || [])[indice]
+          if (preco === null || preco === undefined) return ''
+          return erroDoPreco(Number.isNaN(preco) ? null : preco)
+        })
+        if (daVariacao.some(Boolean)) erro.variacoes = daVariacao
+      }
+      if (Object.keys(erro).length > 0) errosDosPrecos[proprio.profissional_id] = erro
+    }
+    if (Object.keys(errosDosPrecos).length > 0) erros.precosProfissionais = errosDosPrecos
+  }
 
   return erros
 }

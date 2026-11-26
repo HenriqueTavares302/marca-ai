@@ -7,7 +7,7 @@ function iniciais(nome) {
   return (primeira + ultima).toUpperCase()
 }
 
-function CardProfissional({ nome, detalhe, fotoUrl, qualquer = false, escolhido, aoEscolher }) {
+function CardProfissional({ nome, detalhe, fotoUrl, valor, qualquer = false, escolhido, aoEscolher }) {
   const corDaBorda = escolhido ? 'border-principal' : 'border-borda'
 
   return (
@@ -26,6 +26,12 @@ function CardProfissional({ nome, detalhe, fotoUrl, qualquer = false, escolhido,
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="text-lg font-semibold">{nome}</span>
         <span className="text-texto-suave">{detalhe}</span>
+        {valor && (
+          <span className="font-semibold">
+            <span className="sr-only">Total: </span>
+            {valor}
+          </span>
+        )}
         {escolhido && (
           <span className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-principal bg-principal px-3 py-0.5 font-semibold text-sobre-principal">
             <Check className="size-4" aria-hidden="true" />

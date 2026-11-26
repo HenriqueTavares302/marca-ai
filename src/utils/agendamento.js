@@ -1,4 +1,5 @@
 import { formatarPreco } from './formatos.js'
+import { faixaDoPreco, precoComProfissional } from './precos.js'
 
 const chave = 'marca-ai:escolha'
 const chaveDoProfissional = 'marca-ai:profissional'
@@ -235,7 +236,7 @@ export function limparEscolha() {
   }
 }
 
-export function resumirEscolha(escolha, servicos) {
+export function resumirEscolha(escolha, servicos, profissionalId = null) {
   const itens = []
 
   for (const escolhido of escolha) {
@@ -244,17 +245,19 @@ export function resumirEscolha(escolha, servicos) {
     const variacao = servico.variacoes.find((item) => item.id === escolhido.variacao_id) || null
     if (servico.variacoes.length > 0 && !variacao) continue
 
+    const faixa = faixaDoPreco(servico, variacao)
     itens.push({
       servico,
       variacao,
       nome: variacao ? servico.nome + ' · ' + variacao.nome : servico.nome,
-      preco: variacao ? variacao.preco : servico.preco,
+      preco: profissionalId ? precoComProfissional(servico, variacao, profissionalId) : faixa.menor,
+      variaPorProfissional: !profissionalId && servico.tipo_preco !== 'consulta' && faixa.menor !== faixa.maior,
       duracao_min: variacao ? variacao.duracao_min : servico.duracao_min,
     })
   }
 
   const aCombinar = itens.some((item) => item.servico.tipo_preco === 'consulta' || item.preco === null)
-  const aPartir = itens.some((item) => item.servico.tipo_preco === 'a_partir')
+  const aPartir = itens.some((item) => item.servico.tipo_preco === 'a_partir' || item.variaPorProfissional)
   const itensComPreco = itens.filter((item) => item.servico.tipo_preco !== 'consulta' && item.preco !== null)
 
   return {
@@ -276,4 +279,30 @@ export function textoDoValorTotal(resumo) {
   if (!resumo.temValor) return 'valor a combinar'
   const valor = (resumo.aPartir ? 'a partir de ' : '') + formatarPreco(resumo.valorTotal)
   return resumo.aCombinar ? valor + ' + valor a combinar' : valor
+}
+
+export function faixaDosProfissionais(escolha, servicos, profissionais) {
+  const resumos = profissionais.map((profissional) => resumirEscolha(escolha, servicos, profissional.id))
+  const comValor = resumos.filter((resumo) => resumo.temValor)
+  if (comValor.length === 0) return { temValor: false, aCombinar: resumos.some((resumo) => resumo.aCombinar) }
+  const totais = comValor.map((resumo) => resumo.valorTotal)
+  return {
+    temValor: true,
+    menor: Math.min(...totais),
+    maior: Math.max(...totais),
+    aPartir: comValor.some((resumo) => resumo.aPartir),
+    aCombinar: resumos.some((resumo) => resumo.aCombinar),
+  }
+}
+
+export function textoDaFaixa(faixa) {
+  if (!faixa.temValor) return 'valor a combinar'
+  let texto
+  if (faixa.menor === faixa.maior) {
+    texto = (faixa.aPartir ? 'a partir de ' : '') + formatarPreco(faixa.menor)
+  } else {
+    texto = formatarPreco(faixa.menor) + ' a ' + formatarPreco(faixa.maior)
+    if (faixa.aPartir) texto += ' · valor final no salão'
+  }
+  return faixa.aCombinar ? texto + ' + valor a combinar' : texto
 }

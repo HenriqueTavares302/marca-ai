@@ -43,6 +43,7 @@ import { formatarDataCurta, formatarDuracao } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos, minutosDaHora } from '../../utils/horariosLivres.js'
 import { mostrarAcimaDoRodape, rolarFaixaParaODia } from '../../utils/rolagem.js'
+import { precoParaMostrar } from '../../utils/precos.js'
 import { profissionalLogado } from '../../utils/sessao.js'
 
 const quantidadeDeDias = 21
@@ -76,7 +77,7 @@ function Secao({ id, numero, titulo, erro, children }) {
   )
 }
 
-function LinhaDeServico({ servico, item, aoTocar }) {
+function LinhaDeServico({ servico, item, profissionalId, aoTocar }) {
   const escolhido = Boolean(item)
   const duracoes = servico.variacoes.map((variacao) => variacao.duracao_min)
   const tempo = item
@@ -110,7 +111,7 @@ function LinhaDeServico({ servico, item, aoTocar }) {
           {escolhido && <span className="sr-only">, adicionado</span>}
         </span>
       </span>
-      <PrecoDoServico tipoPreco={servico.tipo_preco} preco={item ? item.preco : servico.preco} />
+      <PrecoDoServico {...precoParaMostrar(servico, item ? item.variacao : null, profissionalId)} />
     </button>
   )
 }
@@ -183,7 +184,7 @@ function NovoAgendamento() {
     carregarDias()
   }, [profissionalId, hoje])
 
-  const resumo = base ? resumirEscolha(escolha, base.servicos) : resumirEscolha([], [])
+  const resumo = base ? resumirEscolha(escolha, base.servicos, profissionalId) : resumirEscolha([], [])
   const servicoIds = resumo.itens.map((item) => item.servico.id)
   const chaveDosServicos = servicoIds.join(',')
   const possiveis = base ? profissionaisQueFazemTudo(base.profissionais, resumo.itens) : []
@@ -557,6 +558,7 @@ function NovoAgendamento() {
               <LinhaDeServico
                 servico={servico}
                 item={resumo.itens.find((item) => item.servico.id === servico.id) || null}
+                profissionalId={profissionalId}
                 aoTocar={() => tocarNoServico(servico)}
               />
             </li>
@@ -748,6 +750,7 @@ function NovoAgendamento() {
       <PainelDeTamanho
         servico={servicoDoPainel}
         variacaoAtualId={itemDoPainel && itemDoPainel.variacao ? itemDoPainel.variacao.id : null}
+        profissionalId={profissionalId}
         aoEscolher={escolherTamanho}
         aoRemover={() => {
           setEscolha(escolha.filter((item) => item.servico_id !== servicoDoPainel.id))

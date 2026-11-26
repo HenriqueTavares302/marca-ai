@@ -24,6 +24,7 @@ import {
   errosDoServico,
   lerMinutos,
   lerPreco,
+  lerPrecoOpcional,
   limiteDeVariacoes,
   tamanhosPadrao,
   temErros,
@@ -49,8 +50,23 @@ function formularioVazio(idLogado) {
     preco: '',
     variacoes: [],
     profissionalIds: idLogado ? [idLogado] : [],
+    precosProprios: {},
     ativo: true,
   }
+}
+
+function precosDoServico(servico) {
+  const precos = {}
+  for (const id of servico.profissional_ids) {
+    const doServico = servico.precos_por_profissional || {}
+    const variacoes = {}
+    servico.variacoes.forEach((variacao, indice) => {
+      const daVariacao = variacao.precos_por_profissional || {}
+      variacoes[indice + 1] = textoDoPreco(daVariacao[id])
+    })
+    precos[id] = { preco: textoDoPreco(doServico[id]), variacoes }
+  }
+  return precos
 }
 
 function formularioDoServico(servico) {
@@ -71,6 +87,7 @@ function formularioDoServico(servico) {
       duracao: String(variacao.duracao_min),
     })),
     profissionalIds: servico.profissional_ids,
+    precosProprios: precosDoServico(servico),
     ativo: servico.ativo,
   }
 }
@@ -92,16 +109,39 @@ function montarDados(formulario, id) {
       duracao_min: lerMinutos(variacao.duracao),
     })),
     profissional_ids: formulario.profissionalIds,
+    precos_profissionais: formulario.profissionalIds.map((profissionalId) => {
+      const proprios = formulario.precosProprios[profissionalId] || { preco: '', variacoes: {} }
+      return {
+        profissional_id: profissionalId,
+        preco: lerPrecoOpcional(proprios.preco || ''),
+        variacoes: formulario.variacoes.map((variacao) => lerPrecoOpcional(proprios.variacoes[variacao.chave] || '')),
+      }
+    }),
   }
 }
 
+function precoValido(valor) {
+  return typeof valor === 'number' && !Number.isNaN(valor) && valor > 0
+}
+
 function servicoDaPrevia(dados, fotoUrl) {
-  const variacoes = dados.variacoes.map((variacao, indice) => ({
-    id: indice + 1,
-    nome: variacao.nome.trim() || 'Variação ' + (indice + 1),
-    preco: variacao.preco === null ? 0 : variacao.preco,
-    duracao_min: variacao.duracao_min === null ? 0 : variacao.duracao_min,
-  }))
+  const variacoes = dados.variacoes.map((variacao, indice) => {
+    const precosDaVariacao = {}
+    for (const proprio of dados.precos_profissionais) {
+      if (precoValido(proprio.variacoes[indice])) precosDaVariacao[proprio.profissional_id] = proprio.variacoes[indice]
+    }
+    return {
+      id: indice + 1,
+      nome: variacao.nome.trim() || 'Variação ' + (indice + 1),
+      preco: variacao.preco === null ? 0 : variacao.preco,
+      duracao_min: variacao.duracao_min === null ? 0 : variacao.duracao_min,
+      precos_por_profissional: precosDaVariacao,
+    }
+  })
+  const precosDoServico = {}
+  for (const proprio of dados.precos_profissionais) {
+    if (precoValido(proprio.preco)) precosDoServico[proprio.profissional_id] = proprio.preco
+  }
   const comVariacoes = variacoes.length > 0
   let preco = dados.preco === null ? 0 : dados.preco
   if (dados.tipo_preco === 'consulta') preco = null
@@ -121,6 +161,8 @@ function servicoDaPrevia(dados, fotoUrl) {
     preco,
     tipo_preco: comVariacoes ? 'a_partir' : dados.tipo_preco,
     variacoes,
+    profissional_ids: dados.profissional_ids,
+    precos_por_profissional: precosDoServico,
   }
 }
 
@@ -252,6 +294,17 @@ function FormularioDeServico() {
     focarDepois('botao-adicionar-variacao')
   }
 
+  function mudarPrecoProprio(profissionalId, chave, valor) {
+    setFormulario((atual) => {
+      const proprios = atual.precosProprios[profissionalId] || { preco: '', variacoes: {} }
+      const novos =
+        chave === null
+          ? { ...proprios, preco: valor }
+          : { ...proprios, variacoes: { ...proprios.variacoes, [chave]: valor } }
+      return { ...atual, precosProprios: { ...atual.precosProprios, [profissionalId]: novos } }
+    })
+  }
+
   function alternarProfissional(id) {
     const marcado = formulario.profissionalIds.includes(id)
     mudar(
@@ -284,6 +337,13 @@ function FormularioDeServico() {
       return 'variacao-' + formulario.variacoes[indice].chave + '-' + campo
     }
     if (erros.profissionais) return 'titulo-profissionais'
+    if (erros.precosProfissionais) {
+      const profissionalId = formulario.profissionalIds.find((id) => erros.precosProfissionais[id])
+      const erro = erros.precosProfissionais[profissionalId]
+      if (erro.preco) return 'preco-prof-' + profissionalId
+      const indice = erro.variacoes.findIndex(Boolean)
+      return 'preco-prof-' + profissionalId + '-var-' + formulario.variacoes[indice].chave
+    }
     return null
   }
 
@@ -575,6 +635,66 @@ function FormularioDeServico() {
             />
           ))}
         </fieldset>
+      </Secao>
+
+      <Secao id="titulo-precos-profissionais" titulo="Preço por profissional">
+        {!comVariacoes && formulario.tipoPreco === 'consulta' ? (
+          <p className="text-texto-suave">Serviço sob consulta não tem preço, então não há preço por profissional.</p>
+        ) : (
+          <>
+            <p className="text-texto-suave">
+              Opcional. Preencha só quando o preço de um profissional for diferente. Vazio usa o preço base.
+            </p>
+            {base.profissionais
+              .filter((profissional) => formulario.profissionalIds.includes(profissional.id))
+              .map((profissional) => {
+                const proprios = formulario.precosProprios[profissional.id] || { preco: '', variacoes: {} }
+                const erro =
+                  tentouSalvar && erros.precosProfissionais ? erros.precosProfissionais[profissional.id] || {} : {}
+                return (
+                  <div
+                    key={profissional.id}
+                    className="flex flex-col gap-3 rounded-2xl border-2 border-borda bg-superficie p-3"
+                  >
+                    <p className="font-semibold">
+                      {profissional.nome}
+                      {profissional.id === idLogado ? ' (você)' : ''}
+                    </p>
+                    {comVariacoes ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {formulario.variacoes.map((variacao, indice) => (
+                          <CampoTexto
+                            key={variacao.chave}
+                            id={'preco-prof-' + profissional.id + '-var-' + variacao.chave}
+                            rotulo={(variacao.nome.trim() || 'Variação ' + (indice + 1)) + ' (R$)'}
+                            valor={proprios.variacoes[variacao.chave] || ''}
+                            aoMudar={(valor) => mudarPrecoProprio(profissional.id, variacao.chave, valor)}
+                            erro={erro.variacoes ? erro.variacoes[indice] : ''}
+                            placeholder={variacao.preco ? 'Base ' + variacao.preco : 'Base'}
+                            modoDeEntrada="decimal"
+                            autoCompletar="off"
+                            limite={12}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <CampoTexto
+                        id={'preco-prof-' + profissional.id}
+                        rotulo="Preço deste profissional (R$)"
+                        valor={proprios.preco || ''}
+                        aoMudar={(valor) => mudarPrecoProprio(profissional.id, null, valor)}
+                        erro={erro.preco || ''}
+                        placeholder={formulario.preco ? 'Base ' + formulario.preco : 'Base'}
+                        modoDeEntrada="decimal"
+                        autoCompletar="off"
+                        limite={12}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+          </>
+        )}
       </Secao>
 
       <Secao id="titulo-situacao" titulo="Situação">

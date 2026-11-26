@@ -5,9 +5,9 @@ import { formatarMinutos } from './horariosLivres.js'
 
 export async function carregarResumoDoFluxo() {
   const servicos = await listarServicosComVariacoes()
-  const resumo = resumirEscolha(carregarEscolha(), servicos)
   const horario = carregarHorario()
   const idDoProfissional = horario ? horario.profissionalId : carregarProfissional()
+  const resumo = resumirEscolha(carregarEscolha(), servicos, idDoProfissional)
   const profissional = idDoProfissional === null ? null : await buscarProfissional(idDoProfissional)
   const quando = horario
     ? formatarDataCurta(horario.data) +
@@ -23,5 +23,7 @@ export async function carregarResumoDoFluxo() {
     quando,
     nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
     profissionalEscolhidoId: carregarProfissional(),
+    profissionalId: idDoProfissional,
+    servicos,
   }
 }
