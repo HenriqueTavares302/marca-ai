@@ -8,6 +8,7 @@ import Esqueleto from '../../components/Esqueleto.jsx'
 import PrecoDoServico from '../../components/PrecoDoServico.jsx'
 import { buscarSalao, listarHorarioDoSalao, listarServicosPopulares } from '../../data/consultas.js'
 import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
+import { partesEmSaoPaulo } from '../../utils/fuso.js'
 import { agruparHorariosDaSemana, situacaoDoSalao } from '../../utils/horarios.js'
 
 function StatusDoSalao({ semana, agora }) {
@@ -50,7 +51,7 @@ function Inicio() {
     return () => clearInterval(relogio)
   }, [])
 
-  const diaDeHoje = agora.getDay()
+  const diaDeHoje = partesEmSaoPaulo(agora).diaSemana
 
   return (
     <>

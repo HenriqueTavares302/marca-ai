@@ -38,7 +38,7 @@ function LayoutDaArea({ itens }) {
   const aoVoltar = itemAtual && itemAtual.comVoltar ? voltar : undefined
 
   return (
-    <div className="min-h-screen pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <div className={`min-h-screen ${mostrarBarra ? 'pb-[calc(7rem+env(safe-area-inset-bottom))]' : 'pb-4'}`}>
       {mostrarCabecalho && <Cabecalho titulo={titulo} aoVoltar={aoVoltar} acao={<BotaoTema />} />}
       <main className="mx-auto flex max-w-lg flex-col gap-6 p-4">
         <Outlet />

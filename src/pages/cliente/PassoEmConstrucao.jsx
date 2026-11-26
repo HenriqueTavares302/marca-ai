@@ -8,7 +8,9 @@ import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
 import { buscarProfissional, listarServicosComVariacoes } from '../../data/consultas.js'
-import { carregarEscolha, carregarProfissional, resumirEscolha } from '../../utils/agendamento.js'
+import { carregarEscolha, carregarHorario, carregarProfissional, resumirEscolha } from '../../utils/agendamento.js'
+import { formatarDataCurta } from '../../utils/formatos.js'
+import { formatarMinutos } from '../../utils/horariosLivres.js'
 
 function PassoEmConstrucao({ passo, texto, proximoCaminho }) {
   const [dados, setDados] = useState(null)
@@ -16,10 +18,20 @@ function PassoEmConstrucao({ passo, texto, proximoCaminho }) {
   useEffect(() => {
     async function carregar() {
       const servicos = await listarServicosComVariacoes()
-      const idDoProfissional = carregarProfissional()
+      const resumo = resumirEscolha(carregarEscolha(), servicos)
+      const horario = carregarHorario()
+      const idDoProfissional = horario ? horario.profissionalId : carregarProfissional()
       const profissional = idDoProfissional === null ? null : await buscarProfissional(idDoProfissional)
+      const quando = horario
+        ? formatarDataCurta(horario.data) +
+          ' · ' +
+          formatarMinutos(horario.minutos) +
+          ' às ' +
+          formatarMinutos(horario.minutos + resumo.duracaoTotal)
+        : ''
       setDados({
-        resumo: resumirEscolha(carregarEscolha(), servicos),
+        resumo,
+        quando,
         nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
       })
     }
@@ -37,7 +49,7 @@ function PassoEmConstrucao({ passo, texto, proximoCaminho }) {
   return (
     <>
       <IndicadorDePassos passo={passo} />
-      <ResumoDosServicos resumo={dados.resumo} nomeDoProfissional={dados.nomeDoProfissional} />
+      <ResumoDosServicos resumo={dados.resumo} nomeDoProfissional={dados.nomeDoProfissional} quando={dados.quando} />
       <EmConstrucao texto={texto} />
       {proximoCaminho && (
         <RodapeFixo>

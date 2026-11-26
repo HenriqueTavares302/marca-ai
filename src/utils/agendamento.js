@@ -25,6 +25,34 @@ export function salvarProfissional(id) {
   }
 }
 
+const chaveDoHorario = 'marca-ai:horario'
+
+export function carregarHorario() {
+  try {
+    const salvo = JSON.parse(sessionStorage.getItem(chaveDoHorario))
+    const valido =
+      salvo &&
+      /^\d{4}-\d{2}-\d{2}$/.test(salvo.data) &&
+      Number.isInteger(salvo.minutos) &&
+      Number.isInteger(salvo.profissionalId)
+    return valido ? salvo : null
+  } catch {
+    return null
+  }
+}
+
+export function salvarHorario(horario) {
+  try {
+    if (horario === null) {
+      sessionStorage.removeItem(chaveDoHorario)
+    } else {
+      sessionStorage.setItem(chaveDoHorario, JSON.stringify(horario))
+    }
+  } catch {
+    return
+  }
+}
+
 export function servicosQueFaltam(profissional, itens) {
   return itens.filter((item) => !profissional.servico_ids.includes(item.servico.id)).map((item) => item.servico)
 }
@@ -60,6 +88,7 @@ export function limparEscolha() {
   try {
     sessionStorage.removeItem(chave)
     sessionStorage.removeItem(chaveDoProfissional)
+    sessionStorage.removeItem(chaveDoHorario)
   } catch {
     return
   }

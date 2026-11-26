@@ -26,7 +26,7 @@ const varianteDoStatus = {
 }
 
 function formatarHora(dataIso) {
-  return new Date(dataIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(dataIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 }
 
 const itensDaBarra = [

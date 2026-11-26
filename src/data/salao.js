@@ -5,4 +5,6 @@ export const salao = {
   endereco: 'Rua Exemplo, 0 - Bairro Exemplo, Cidade Exemplo',
   telefone: '0030000000',
   whatsapp: '5500900000000',
+  intervalo_minutos: 30,
+  antecedencia_minima_minutos: 60,
 }

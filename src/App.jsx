@@ -4,6 +4,7 @@ import LayoutSalao from './layouts/LayoutSalao.jsx'
 import Componentes from './pages/Componentes.jsx'
 import NaoEncontrada from './pages/NaoEncontrada.jsx'
 import Agendar from './pages/cliente/Agendar.jsx'
+import AgendarHorario from './pages/cliente/AgendarHorario.jsx'
 import Inicio from './pages/cliente/Inicio.jsx'
 import MeusAgendamentos from './pages/cliente/MeusAgendamentos.jsx'
 import PassoEmConstrucao from './pages/cliente/PassoEmConstrucao.jsx'
@@ -20,16 +21,7 @@ function App() {
         <Route path="/" element={<Inicio />} />
         <Route path="/servicos" element={<ServicosDoCliente />} />
         <Route path="/agendar" element={<Agendar />} />
-        <Route
-          path="/agendar/horario"
-          element={
-            <PassoEmConstrucao
-              passo={2}
-              texto="Aqui você vai escolher o dia e o horário livre."
-              proximoCaminho="/agendar/dados"
-            />
-          }
-        />
+        <Route path="/agendar/horario" element={<AgendarHorario />} />
         <Route
           path="/agendar/dados"
           element={

@@ -9,6 +9,7 @@ import { profissionais } from './profissionais.js'
 import { salao } from './salao.js'
 import { servico_variacoes } from './servico_variacoes.js'
 import { categorias, servicos } from './servicos.js'
+import { calcularHorariosLivres } from '../utils/horariosLivres.js'
 
 export async function buscarSalao() {
   return salao
@@ -27,6 +28,42 @@ export async function listarProfissionaisComServicos() {
         .filter((ligacao) => ligacao.profissional_id === profissional.id)
         .map((ligacao) => ligacao.servico_id),
     }))
+}
+
+function candidatosDoHorario(profissionalId, servicoIds) {
+  if (profissionalId) {
+    return profissionais.filter((profissional) => profissional.ativo && profissional.id === profissionalId)
+  }
+  return profissionais.filter((profissional) => {
+    if (!profissional.ativo) return false
+    const faz = profissional_servicos
+      .filter((ligacao) => ligacao.profissional_id === profissional.id)
+      .map((ligacao) => ligacao.servico_id)
+    return servicoIds.every((id) => faz.includes(id))
+  })
+}
+
+export async function listarHorariosLivres(data, profissionalId, duracaoMinutos, servicoIds = []) {
+  const candidatos = candidatosDoHorario(profissionalId, servicoIds)
+  return calcularHorariosLivres({
+    data,
+    duracao: duracaoMinutos,
+    profissionalIds: candidatos.map((profissional) => profissional.id),
+    horariosTrabalho: horarios_trabalho,
+    bloqueios,
+    agendamentos,
+    agora: Date.now(),
+    intervalo: salao.intervalo_minutos,
+    antecedencia: salao.antecedencia_minima_minutos,
+  })
+}
+
+export async function listarDiasDeAtendimento(profissionalId, servicoIds = []) {
+  const ids = candidatosDoHorario(profissionalId, servicoIds).map((profissional) => profissional.id)
+  const dias = horarios_trabalho
+    .filter((horario) => ids.includes(horario.profissional_id))
+    .map((horario) => horario.dia_semana)
+  return [...new Set(dias)]
 }
 
 export async function buscarProfissional(id) {

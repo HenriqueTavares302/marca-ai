@@ -1,0 +1,378 @@
+import { useEffect, useState } from 'react'
+import { ArrowRight, Check, Info } from 'lucide-react'
+import Botao from '../../components/Botao.jsx'
+import Card from '../../components/Card.jsx'
+import Esqueleto from '../../components/Esqueleto.jsx'
+import FileiraRolavel from '../../components/FileiraRolavel.jsx'
+import IndicadorDePassos from '../../components/IndicadorDePassos.jsx'
+import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
+import RodapeFixo from '../../components/RodapeFixo.jsx'
+import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
+import {
+  listarDiasDeAtendimento,
+  listarHorariosLivres,
+  listarProfissionaisComServicos,
+  listarServicosComVariacoes,
+} from '../../data/consultas.js'
+import {
+  carregarEscolha,
+  carregarHorario,
+  carregarProfissional,
+  profissionaisQueFazemTudo,
+  resumirEscolha,
+  salvarHorario,
+  salvarProfissional,
+} from '../../utils/agendamento.js'
+import { formatarDataCurta, formatarDataLonga, nomeCurtoDoDia, numeroDoDia } from '../../utils/formatos.js'
+import { diaDaSemana, hojeEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import { formatarMinutos } from '../../utils/horariosLivres.js'
+
+const quantidadeDeDias = 21
+
+const periodos = [
+  { nome: 'Manhã', de: 0, ate: 12 * 60 },
+  { nome: 'Tarde', de: 12 * 60, ate: 18 * 60 },
+  { nome: 'Noite', de: 18 * 60, ate: 24 * 60 },
+]
+
+function comportamentoDaRolagem() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+}
+
+function rolarFaixaParaODia(data) {
+  const dia = document.getElementById('dia-' + data)
+  if (!dia) return
+  const faixa = dia.parentElement
+  const centroDoDia = dia.getBoundingClientRect().left + dia.offsetWidth / 2
+  const centroDaFaixa = faixa.getBoundingClientRect().left + faixa.clientWidth / 2
+  faixa.scrollBy({ left: centroDoDia - centroDaFaixa })
+}
+
+async function buscarDiaComVaga(dias, aPartirDe, dados) {
+  for (let indice = aPartirDe; indice < dias.length; indice++) {
+    const data = dias[indice]
+    if (!dados.diasAbertos.includes(diaDaSemana(data))) continue
+    const livres = await listarHorariosLivres(data, dados.profissionalId, dados.duracao, dados.servicoIds)
+    if (livres.length > 0) return data
+  }
+  return null
+}
+
+function DiaDaFaixa({ data, hoje, aberto, selecionado, aoEscolher }) {
+  let rotulo = nomeCurtoDoDia(data)
+  if (data === hoje) rotulo = 'Hoje'
+  if (data === somarDias(hoje, 1)) rotulo = 'Amanhã'
+
+  if (!aberto) {
+    return (
+      <span
+        id={'dia-' + data}
+        className="flex min-h-20 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-texto-suave px-1 text-texto-suave"
+      >
+        <span>{rotulo}</span>
+        <span className="text-lg font-semibold">{numeroDoDia(data)}</span>
+        <span>Fechado</span>
+      </span>
+    )
+  }
+
+  const cores = selecionado
+    ? 'border-principal bg-principal text-sobre-principal'
+    : 'border-texto-suave bg-superficie text-texto'
+
+  return (
+    <button
+      id={'dia-' + data}
+      type="button"
+      onClick={aoEscolher}
+      aria-pressed={selecionado}
+      aria-label={formatarDataLonga(data) + (rotulo === 'Hoje' || rotulo === 'Amanhã' ? ', ' + rotulo.toLowerCase() : '')}
+      className={`flex min-h-20 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl border-2 px-1 ${cores}`}
+    >
+      <span>{rotulo}</span>
+      <span className="text-lg font-semibold">{numeroDoDia(data)}</span>
+      <span className="flex h-6 items-center">{selecionado && <Check className="size-5" aria-hidden="true" />}</span>
+    </button>
+  )
+}
+
+function BotaoDeHorario({ horario, selecionado, aoEscolher }) {
+  const cores = selecionado
+    ? 'border-principal bg-principal text-sobre-principal'
+    : 'border-texto-suave bg-superficie text-texto'
+
+  return (
+    <button
+      type="button"
+      onClick={aoEscolher}
+      aria-pressed={selecionado}
+      data-horario-escolhido={selecionado}
+      className={`flex min-h-12 items-center justify-center gap-1 rounded-xl border-2 font-semibold ${cores}`}
+    >
+      {selecionado && <Check className="size-4" aria-hidden="true" />}
+      {horario.hora}
+    </button>
+  )
+}
+
+function AgendarHorario() {
+  const [dados, setDados] = useState(null)
+  const [dataSelecionada, setDataSelecionada] = useState(null)
+  const [horarios, setHorarios] = useState(null)
+  const [escolhido, setEscolhido] = useState(null)
+  const [aviso, setAviso] = useState('')
+  const [semVagaNaFaixa, setSemVagaNaFaixa] = useState(false)
+
+  useEffect(() => {
+    async function carregar() {
+      const [servicos, profissionais] = await Promise.all([listarServicosComVariacoes(), listarProfissionaisComServicos()])
+      const resumo = resumirEscolha(carregarEscolha(), servicos)
+      if (resumo.quantidade === 0) {
+        setDados({ resumo })
+        return
+      }
+
+      const possiveis = profissionaisQueFazemTudo(profissionais, resumo.itens)
+      const idSalvo = carregarProfissional()
+      const profissional = possiveis.find((item) => item.id === idSalvo) || null
+      if (idSalvo !== null && !profissional) salvarProfissional(null)
+
+      const hoje = hojeEmSaoPaulo()
+      const dias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
+      const profissionalId = profissional ? profissional.id : null
+      const servicoIds = resumo.itens.map((item) => item.servico.id)
+      const diasAbertos = await listarDiasDeAtendimento(profissionalId, servicoIds)
+      const novosDados = {
+        resumo,
+        hoje,
+        dias,
+        possiveis,
+        profissionalId,
+        servicoIds,
+        diasAbertos,
+        duracao: resumo.duracaoTotal,
+        nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
+        nomes: Object.fromEntries(profissionais.map((item) => [item.id, item.nome])),
+      }
+
+      let dataInicial = null
+      const salvo = carregarHorario()
+      if (salvo && possiveis.length > 0) {
+        const livres = await listarHorariosLivres(salvo.data, profissionalId, resumo.duracaoTotal, servicoIds)
+        const aindaLivre = dias.includes(salvo.data) && livres.find((horario) => horario.minutos === salvo.minutos)
+        if (aindaLivre) {
+          const atualizado = { data: salvo.data, minutos: salvo.minutos, profissionalId: aindaLivre.profissionalId }
+          salvarHorario(atualizado)
+          setEscolhido(atualizado)
+          dataInicial = salvo.data
+        } else {
+          salvarHorario(null)
+          setAviso(
+            'O horário escolhido antes (' +
+              formatarDataCurta(salvo.data) +
+              ' · ' +
+              formatarMinutos(salvo.minutos) +
+              ') não serve mais para os serviços ou o profissional escolhidos. Escolha outro.',
+          )
+        }
+      }
+
+      if (!dataInicial && possiveis.length > 0) {
+        dataInicial = await buscarDiaComVaga(dias, 0, novosDados)
+      }
+      if (!dataInicial) {
+        dataInicial = dias.find((data) => diasAbertos.includes(diaDaSemana(data))) || dias[0]
+      }
+
+      setDados(novosDados)
+      setDataSelecionada(dataInicial)
+    }
+    carregar()
+  }, [])
+
+  useEffect(() => {
+    if (!dados || !dataSelecionada || !dados.possiveis || dados.possiveis.length === 0) return
+    let atual = true
+    async function carregarHorarios() {
+      setHorarios(null)
+      const livres = await listarHorariosLivres(dataSelecionada, dados.profissionalId, dados.duracao, dados.servicoIds)
+      if (atual) setHorarios(livres)
+    }
+    carregarHorarios()
+    rolarFaixaParaODia(dataSelecionada)
+    return () => {
+      atual = false
+    }
+  }, [dados, dataSelecionada])
+
+  useEffect(() => {
+    if (!escolhido) return
+    const espera = setTimeout(() => {
+      const botao = document.querySelector('[data-horario-escolhido="true"]')
+      const rodape = document.getElementById('rodape-fixo')
+      if (!botao || !rodape) return
+      const limite = window.innerHeight - rodape.offsetHeight - 12
+      const fundoDoBotao = botao.getBoundingClientRect().bottom
+      if (fundoDoBotao > limite) {
+        window.scrollBy({ top: fundoDoBotao - limite, behavior: comportamentoDaRolagem() })
+      }
+    }, 150)
+    return () => clearTimeout(espera)
+  }, [escolhido])
+
+  function escolherHorario(horario) {
+    const novo = { data: dataSelecionada, minutos: horario.minutos, profissionalId: horario.profissionalId }
+    setEscolhido(novo)
+    salvarHorario(novo)
+  }
+
+  async function verProximoDiaComVaga() {
+    const indice = dados.dias.indexOf(dataSelecionada)
+    const proximo = await buscarDiaComVaga(dados.dias, indice + 1, dados)
+    if (proximo) {
+      setSemVagaNaFaixa(false)
+      setDataSelecionada(proximo)
+    } else {
+      setSemVagaNaFaixa(true)
+    }
+  }
+
+  if (!dados) {
+    return (
+      <>
+        <p className="sr-only" role="status">
+          Carregando horários
+        </p>
+        <Esqueleto classes="h-12 w-full" />
+        <Esqueleto classes="h-20 w-full" />
+        <Esqueleto classes="h-40 w-full" />
+      </>
+    )
+  }
+
+  if (dados.resumo.quantidade === 0) {
+    return <SemServicosEscolhidos />
+  }
+
+  if (dados.possiveis.length === 0) {
+    return (
+      <>
+        <IndicadorDePassos passo={2} />
+        <Card>
+          <p className="font-semibold">Nenhum profissional faz todos esses serviços juntos.</p>
+          <p className="text-texto-suave">Volte e tire um dos serviços para ver os horários.</p>
+        </Card>
+        <RodapeFixo>
+          <Botao para="/servicos" larguraTotal grande>
+            Alterar serviços
+          </Botao>
+        </RodapeFixo>
+      </>
+    )
+  }
+
+  const escolhidoNesteDia = escolhido && escolhido.data === dataSelecionada ? escolhido : null
+
+  return (
+    <>
+      <IndicadorDePassos passo={2} />
+      <ResumoDosServicos resumo={dados.resumo} nomeDoProfissional={dados.nomeDoProfissional} />
+
+      {aviso && (
+        <p role="status" className="flex items-start gap-2 rounded-2xl border-2 border-principal bg-superficie p-3">
+          <Info className="mt-0.5 size-5 shrink-0 text-principal" aria-hidden="true" />
+          {aviso}
+        </p>
+      )}
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-2xl font-semibold">Escolha o dia</h2>
+        <div className="-mx-4">
+          <FileiraRolavel rotulo="Dias" quantidade={dados.dias.length}>
+            {dados.dias.map((data) => (
+              <DiaDaFaixa
+                key={data}
+                data={data}
+                hoje={dados.hoje}
+                aberto={dados.diasAbertos.includes(diaDaSemana(data))}
+                selecionado={data === dataSelecionada}
+                aoEscolher={() => {
+                  setSemVagaNaFaixa(false)
+                  setDataSelecionada(data)
+                }}
+              />
+            ))}
+          </FileiraRolavel>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4" aria-live="polite">
+        <h2 className="text-2xl font-semibold">{formatarDataLonga(dataSelecionada)}</h2>
+
+        {horarios === null && <Esqueleto classes="h-32 w-full" />}
+
+        {horarios !== null && horarios.length === 0 && (
+          <Card>
+            <p className="font-semibold">Sem horários livres neste dia.</p>
+            {semVagaNaFaixa ? (
+              <p className="text-texto-suave">
+                Não encontramos vagas nos próximos {quantidadeDeDias} dias. Fale com o salão pelo WhatsApp.
+              </p>
+            ) : (
+              <Botao variante="secundario" larguraTotal aoClicar={verProximoDiaComVaga}>
+                Ver o próximo dia com vaga
+                <ArrowRight className="size-5" aria-hidden="true" />
+              </Botao>
+            )}
+          </Card>
+        )}
+
+        {horarios !== null &&
+          horarios.length > 0 &&
+          periodos.map((periodo) => {
+            const doPeriodo = horarios.filter((horario) => horario.minutos >= periodo.de && horario.minutos < periodo.ate)
+            if (doPeriodo.length === 0) return null
+            return (
+              <div key={periodo.nome} className="flex flex-col gap-2">
+                <h3 className="text-lg font-semibold">{periodo.nome}</h3>
+                <div className="grid grid-cols-4 gap-2">
+                  {doPeriodo.map((horario) => (
+                    <BotaoDeHorario
+                      key={horario.minutos}
+                      horario={horario}
+                      selecionado={Boolean(escolhidoNesteDia && escolhidoNesteDia.minutos === horario.minutos)}
+                      aoEscolher={() => escolherHorario(horario)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+      </section>
+
+      <RodapeFixo>
+        {escolhido ? (
+          <>
+            <p className="text-center">
+              <span className="font-semibold">
+                {formatarDataCurta(escolhido.data)} · {formatarMinutos(escolhido.minutos)} às{' '}
+                {formatarMinutos(escolhido.minutos + dados.duracao)}
+              </span>
+              <span className="block text-texto-suave">com {dados.nomes[escolhido.profissionalId]}</span>
+            </p>
+            <Botao para="/agendar/dados" larguraTotal grande>
+              Continuar
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </Botao>
+          </>
+        ) : (
+          <p className="flex min-h-14 items-center justify-center text-center text-texto-suave">
+            Escolha um horário para continuar.
+          </p>
+        )}
+      </RodapeFixo>
+    </>
+  )
+}
+
+export default AgendarHorario

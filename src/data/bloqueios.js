@@ -1,12 +1,15 @@
-import { dataRelativa } from './datas.js'
+import { dataRelativa, diaDaSemanaRelativo } from './datas.js'
+
+function trabalhaODiaTodo(dias) {
+  const dia = diaDaSemanaRelativo(dias)
+  return dia >= 2 && dia <= 6
+}
 
 function criarBloqueios() {
   const lista = []
 
-  for (let dias = -7; dias <= 14; dias++) {
-    const diaDaSemana = new Date(dataRelativa(dias, 12)).getDay()
-    const trabalhaODiaTodo = diaDaSemana >= 2 && diaDaSemana <= 6
-    if (!trabalhaODiaTodo) continue
+  for (let dias = -7; dias <= 21; dias++) {
+    if (!trabalhaODiaTodo(dias)) continue
 
     for (const profissionalId of [1, 2]) {
       lista.push({
@@ -19,11 +22,14 @@ function criarBloqueios() {
     }
   }
 
+  let diaDaFolga = 2
+  while (!trabalhaODiaTodo(diaDaFolga)) diaDaFolga++
+
   lista.push({
     id: lista.length + 1,
     profissional_id: 2,
-    inicio: dataRelativa(2, 9),
-    fim: dataRelativa(2, 19),
+    inicio: dataRelativa(diaDaFolga, 9),
+    fim: dataRelativa(diaDaFolga, 19),
     motivo: 'Folga',
   })
 

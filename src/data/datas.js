@@ -1,8 +1,12 @@
+import { diaDaSemana, hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../utils/fuso.js'
+
 export function dataRelativa(dias, hora, minuto = 0) {
-  const data = new Date()
-  data.setDate(data.getDate() + dias)
-  data.setHours(hora, minuto, 0, 0)
-  return data.toISOString()
+  const data = somarDias(hojeEmSaoPaulo(), dias)
+  return new Date(instanteEmSaoPaulo(data, hora * 60 + minuto)).toISOString()
+}
+
+export function diaDaSemanaRelativo(dias) {
+  return diaDaSemana(somarDias(hojeEmSaoPaulo(), dias))
 }
 
 export function diasDeTrabalhoAtras(quantidade) {
@@ -10,17 +14,12 @@ export function diasDeTrabalhoAtras(quantidade) {
   let encontrados = 0
   while (encontrados < quantidade) {
     dias--
-    const diaDaSemana = new Date(dataRelativa(dias, 12)).getDay()
-    if (diaDaSemana >= 2 && diaDaSemana <= 6) encontrados++
+    const dia = diaDaSemanaRelativo(dias)
+    if (dia >= 2 && dia <= 6) encontrados++
   }
   return dias
 }
 
 export function mesmoDia(dataIso, outraData) {
-  const data = new Date(dataIso)
-  return (
-    data.getFullYear() === outraData.getFullYear() &&
-    data.getMonth() === outraData.getMonth() &&
-    data.getDate() === outraData.getDate()
-  )
+  return partesEmSaoPaulo(dataIso).data === partesEmSaoPaulo(outraData).data
 }

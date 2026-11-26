@@ -17,6 +17,48 @@ export function formatarDuracao(minutos) {
   return resto === 0 ? horas + 'h' : horas + 'h' + String(resto).padStart(2, '0')
 }
 
+const diasCurtos = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const diasLongos = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+const mesesCurtos = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const mesesLongos = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+]
+
+function partesDaData(data) {
+  const [ano, mes, dia] = data.split('-').map(Number)
+  const diaDaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()
+  return { mes, dia, diaDaSemana }
+}
+
+export function nomeCurtoDoDia(data) {
+  return diasCurtos[partesDaData(data).diaDaSemana]
+}
+
+export function numeroDoDia(data) {
+  return partesDaData(data).dia
+}
+
+export function formatarDataCurta(data) {
+  const { mes, dia, diaDaSemana } = partesDaData(data)
+  return diasCurtos[diaDaSemana] + ', ' + dia + ' de ' + mesesCurtos[mes - 1]
+}
+
+export function formatarDataLonga(data) {
+  const { mes, dia, diaDaSemana } = partesDaData(data)
+  return diasLongos[diaDaSemana] + ', ' + dia + ' de ' + mesesLongos[mes - 1]
+}
+
 export function linkDoMapa(endereco) {
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(endereco)
 }

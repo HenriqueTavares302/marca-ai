@@ -1,4 +1,6 @@
-const nomesDosDias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+import { partesEmSaoPaulo } from './fuso.js'
+
+const nomesDosDias =['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 
 const ordemDaSemana = [1, 2, 3, 4, 5, 6, 0]
 
@@ -12,8 +14,9 @@ export function formatarHora(hora) {
 }
 
 export function situacaoDoSalao(semana, agora) {
-  const hoje = agora.getDay()
-  const horaAgora = agora.toTimeString().slice(0, 8)
+  const agoraEmSaoPaulo = partesEmSaoPaulo(agora)
+  const hoje = agoraEmSaoPaulo.diaSemana
+  const horaAgora = agoraEmSaoPaulo.hora + ':00'
   const horarioDeHoje = semana[hoje]
 
   if (horarioDeHoje && horaAgora >= horarioDeHoje.inicio && horaAgora < horarioDeHoje.fim) {
