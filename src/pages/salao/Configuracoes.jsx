@@ -1,11 +1,17 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarOff, ChevronRight, Clock, LogOut, Store } from 'lucide-react'
+import { CalendarOff, ChartColumn, ChevronRight, Clock, LogOut, Store } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
 import { sair } from '../../utils/sessao.js'
 
 const itensDoMenu = [
+  {
+    caminho: '/salao/resumo',
+    titulo: 'Resumo do salão',
+    explicacao: 'Faturamento, faltas e serviços mais pedidos.',
+    icone: ChartColumn,
+  },
   {
     caminho: '/salao/configuracoes/horarios',
     titulo: 'Horários de trabalho',

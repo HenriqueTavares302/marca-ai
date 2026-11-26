@@ -17,6 +17,13 @@ const itensDoSalao = [
     voltarPara: '/salao',
   },
   {
+    caminho: '/salao/resumo',
+    titulo: 'Resumo',
+    foraDaBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao',
+  },
+  {
     caminho: '/salao/servicos/novo',
     titulo: 'Novo serviço',
     foraDaBarra: true,

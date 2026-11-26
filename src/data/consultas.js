@@ -20,6 +20,7 @@ import {
   horariosDosDias,
   juntarIntervalos,
 } from '../utils/expediente.js'
+import { montarResumo, periodoDoResumo } from '../utils/resumo.js'
 import { errosDoServico, resumoDasVariacoes, temErros } from '../utils/servico.js'
 
 const statusValidos = ['agendado', 'concluido', 'cancelado', 'faltou']
@@ -35,7 +36,13 @@ function todosOsAgendamentos() {
   const banco = lerBancoLocal()
   const exemplosComAlteracoes = agendamentosDeExemplo.map((agendamento) => {
     const alteracao = banco.alteracoes_de_status.find((item) => item.agendamento_id === agendamento.id)
-    return alteracao && statusValidos.includes(alteracao.status) ? { ...agendamento, status: alteracao.status } : agendamento
+    if (!alteracao || !statusValidos.includes(alteracao.status)) return { ...agendamento, forma_recebida: null }
+    const comAlteracao = { ...agendamento, status: alteracao.status, forma_recebida: null }
+    if (alteracao.status === 'concluido' && 'valor_total' in alteracao) {
+      comAlteracao.valor_total = alteracao.valor_total
+      comAlteracao.forma_recebida = alteracao.forma_recebida || null
+    }
+    return comAlteracao
   })
   return [...exemplosComAlteracoes, ...banco.agendamentos]
 }
@@ -362,6 +369,7 @@ export async function criarAgendamento({ nome, telefone, profissionalId, inicio,
     valor_total: precosConhecidos.length > 0 ? precosConhecidos.reduce((total, preco) => total + preco, 0) : null,
     forma_pagamento: formaPagamento === 'pix' ? 'pix' : 'salao',
     pago: false,
+    forma_recebida: null,
     observacoes: observacoes || null,
     criado_em: agora,
   }
@@ -470,18 +478,40 @@ export async function listarAgendaDoDia(data, profissionalId) {
   }
 }
 
-export async function atualizarStatusAgendamento(id, novoStatus) {
+const formasDeRecebimento = ['dinheiro', 'pix', 'debito', 'credito']
+
+function valorPrevistoDoAgendamento(id) {
+  const precos = todosOsItensDeAgendamento()
+    .filter((item) => item.agendamento_id === id && item.preco !== null)
+    .map((item) => item.preco)
+  return precos.length > 0 ? precos.reduce((total, preco) => total + preco, 0) : null
+}
+
+export async function atualizarStatusAgendamento(id, novoStatus, recebimento = null) {
   const atual = todosOsAgendamentos().find((agendamento) => agendamento.id === id)
   if (!atual) return { erro: 'nao_encontrado' }
   if (!(mudancasPermitidas[atual.status] || []).includes(novoStatus)) return { erro: 'mudanca_invalida' }
+
+  let extras = {}
+  if (novoStatus === 'concluido') {
+    const valor = recebimento ? Number(recebimento.valor) : NaN
+    const valido = Number.isFinite(valor) && valor >= 0 && valor <= 100000
+    if (!valido || !formasDeRecebimento.includes(recebimento.forma)) return { erro: 'recebimento_invalido' }
+    extras = { valor_total: Math.round(valor * 100) / 100, forma_recebida: recebimento.forma }
+  }
 
   const banco = lerBancoLocal()
   const criadoNoAparelho = banco.agendamentos.find((agendamento) => agendamento.id === id)
   if (criadoNoAparelho) {
     criadoNoAparelho.status = novoStatus
+    if (novoStatus === 'concluido') Object.assign(criadoNoAparelho, extras)
+    if (novoStatus === 'agendado') {
+      criadoNoAparelho.valor_total = valorPrevistoDoAgendamento(id)
+      criadoNoAparelho.forma_recebida = null
+    }
   } else {
     banco.alteracoes_de_status = banco.alteracoes_de_status.filter((item) => item.agendamento_id !== id)
-    banco.alteracoes_de_status.push({ agendamento_id: id, status: novoStatus })
+    banco.alteracoes_de_status.push({ agendamento_id: id, status: novoStatus, ...extras })
   }
 
   try {
@@ -489,7 +519,7 @@ export async function atualizarStatusAgendamento(id, novoStatus) {
   } catch {
     return { erro: 'nao_salvou' }
   }
-  return { agendamento: completarAgendamento({ ...atual, status: novoStatus }) }
+  return { agendamento: completarAgendamento(todosOsAgendamentos().find((agendamento) => agendamento.id === id)) }
 }
 
 export async function verificarEncaixe(profissionalId, data, minutos, duracaoMinutos) {
@@ -829,7 +859,6 @@ export async function buscarFichaDoCliente(id) {
     .map(completarAgendamento)
   const ehProximo = (agendamento) => agendamento.status === 'agendado' && new Date(agendamento.fim).getTime() > agora
   const concluidos = dele.filter((agendamento) => agendamento.status === 'concluido')
-  const itensConcluidos = concluidos.flatMap((agendamento) => agendamento.servicos)
 
   return {
     cliente,
@@ -838,8 +867,8 @@ export async function buscarFichaDoCliente(id) {
     numeros: {
       concluidos: concluidos.length,
       faltas: dele.filter((agendamento) => agendamento.status === 'faltou').length,
-      totalGasto: itensConcluidos.reduce((total, item) => total + (item.preco || 0), 0),
-      temValorACombinar: itensConcluidos.some((item) => item.preco === null),
+      totalGasto: concluidos.reduce((total, agendamento) => total + (agendamento.valor_total || 0), 0),
+      temValorACombinar: concluidos.some((agendamento) => agendamento.valor_total === null),
     },
   }
 }
@@ -915,4 +944,21 @@ export async function removerDadosDoCliente(id) {
 
   if (!gravarClientes(lista.filter((item) => item.id !== id))) return { erro: 'nao_salvou' }
   return { apagado: true }
+}
+
+export async function buscarResumo(tipo, data, profissionalId) {
+  const periodo = periodoDoResumo(tipo, data)
+  const doResumo = profissionais.filter(
+    (profissional) => profissional.ativo && (!profissionalId || profissional.id === profissionalId),
+  )
+  const ids = doResumo.map((profissional) => profissional.id)
+  const agendamentos = todosOsAgendamentos()
+    .filter((agendamento) => ids.includes(agendamento.profissional_id))
+    .filter((agendamento) => {
+      const dia = partesEmSaoPaulo(agendamento.inicio).data
+      return dia >= periodo.inicio && dia <= periodo.fim
+    })
+    .sort(ordenarPorInicio)
+    .map(completarAgendamento)
+  return { periodo, ...montarResumo(agendamentos, doResumo) }
 }

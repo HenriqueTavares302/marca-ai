@@ -41,6 +41,10 @@ function partesDaData(data) {
   return { mes, dia, diaDaSemana }
 }
 
+export function nomeDoMes(mes) {
+  return mesesLongos[mes - 1].charAt(0).toUpperCase() + mesesLongos[mes - 1].slice(1)
+}
+
 export function nomeCurtoDoDia(data) {
   return diasCurtos[partesDaData(data).diaDaSemana]
 }

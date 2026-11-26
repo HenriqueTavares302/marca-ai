@@ -115,6 +115,9 @@ export function tipoDoPrecoGuardado(item) {
 }
 
 export function valorDoAgendamento(agendamento) {
+  if (agendamento.status === 'concluido' && agendamento.valor_total !== null && agendamento.valor_total !== undefined) {
+    return { total: agendamento.valor_total, temValor: true, aPartir: false, aCombinar: false }
+  }
   let total = 0
   let temValor = false
   let aPartir = false

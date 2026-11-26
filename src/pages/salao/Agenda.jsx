@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   CalendarOff,
+  ChartColumn,
   ChevronLeft,
   ChevronRight,
   Coffee,
@@ -257,6 +258,13 @@ function Agenda() {
           <Chip aoClicar={() => setSoEu(false)} selecionado={!soEu}>
             Todos
           </Chip>
+          <Link
+            to={'/salao/resumo?data=' + data}
+            className="ml-auto inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-principal bg-superficie px-4 font-semibold text-principal"
+          >
+            <ChartColumn className="size-5" aria-hidden="true" />
+            Resumo
+          </Link>
         </div>
 
         {resumo ? (

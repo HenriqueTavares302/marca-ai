@@ -20,6 +20,7 @@ import FichaDoCliente from './pages/salao/FichaDoCliente.jsx'
 import FormularioDeCliente from './pages/salao/FormularioDeCliente.jsx'
 import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
 import NovoBloqueio from './pages/salao/NovoBloqueio.jsx'
+import Resumo from './pages/salao/Resumo.jsx'
 import FormularioDeServico from './pages/salao/FormularioDeServico.jsx'
 import HorariosDeTrabalho from './pages/salao/HorariosDeTrabalho.jsx'
 import ServicosDoSalao from './pages/salao/Servicos.jsx'
@@ -53,6 +54,7 @@ const rotas = createBrowserRouter(
         <Route path="configuracoes/bloqueios" element={<Bloqueios />} />
         <Route path="configuracoes/bloqueios/novo" element={<NovoBloqueio />} />
         <Route path="novo" element={<NovoAgendamento />} />
+        <Route path="resumo" element={<Resumo />} />
       </Route>
 
       <Route path="/componentes" element={<Componentes />} />
