@@ -29,6 +29,65 @@ const chaveDoHorario = 'marca-ai:horario'
 const chaveDosDados = 'marca-ai:dados'
 const chaveDosDadosLembrados = 'marca-ai:cliente-lembrado'
 const chaveDoUltimoAgendamento = 'marca-ai:ultimo-agendamento'
+const chaveDosMeusAgendamentos = 'marca-ai:meus-agendamentos'
+const chaveDaRemarcacao = 'marca-ai:remarcacao'
+
+export function carregarMeusAgendamentos() {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(chaveDosMeusAgendamentos))
+    return Array.isArray(salvo) ? salvo.filter((id) => Number.isInteger(id)) : []
+  } catch {
+    return []
+  }
+}
+
+export function adicionarMeuAgendamento(id) {
+  try {
+    const ids = carregarMeusAgendamentos()
+    if (!ids.includes(id)) ids.push(id)
+    localStorage.setItem(chaveDosMeusAgendamentos, JSON.stringify(ids))
+  } catch {
+    return
+  }
+}
+
+export function carregarRemarcacao() {
+  const salvo = lerJson(sessionStorage, chaveDaRemarcacao)
+  const valido = salvo && Number.isInteger(salvo.agendamentoId) && typeof salvo.inicioAnterior === 'string'
+  return valido ? salvo : null
+}
+
+export function iniciarRemarcacao(agendamento) {
+  try {
+    sessionStorage.setItem(
+      chaveDaRemarcacao,
+      JSON.stringify({ agendamentoId: agendamento.id, inicioAnterior: agendamento.inicio }),
+    )
+  } catch {
+    return
+  }
+}
+
+export function encerrarRemarcacao() {
+  try {
+    sessionStorage.removeItem(chaveDaRemarcacao)
+  } catch {
+    return
+  }
+}
+
+export function preencherEscolhaComAgendamento(agendamento, profissionalId) {
+  salvarEscolha(
+    agendamento.servicos.map((item) => ({ servico_id: item.servico_id, variacao_id: item.variacao_id })),
+  )
+  salvarProfissional(profissionalId)
+  salvarHorario(null)
+}
+
+export function podeAlterarAgendamento(agendamento, minimoEmMinutos, agora) {
+  const faltaEmMinutos = (new Date(agendamento.inicio).getTime() - agora) / 60000
+  return agendamento.status === 'agendado' && faltaEmMinutos >= minimoEmMinutos
+}
 
 export function salvarUltimoAgendamento(resumo) {
   try {

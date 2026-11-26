@@ -8,4 +8,5 @@ export const salao = {
   intervalo_minutos: 30,
   antecedencia_minima_minutos: 60,
   pix_ativo: false,
+  cancelamento_minimo_minutos: 120,
 }

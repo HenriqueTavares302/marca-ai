@@ -9,7 +9,10 @@ function LayoutDaArea({ itens }) {
   const navegar = useNavigate()
   const caminho = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
   const itemAtual = itens.find((item) => item.caminho === caminho)
-  const titulo = itemAtual ? itemAtual.titulo : 'Marca Aí'
+  let titulo = 'Marca Aí'
+  if (itemAtual) {
+    titulo = typeof itemAtual.titulo === 'function' ? itemAtual.titulo() : itemAtual.titulo
+  }
   const itensDaBarra = itens.filter((item) => !item.foraDaBarra)
 
   useEffect(() => {

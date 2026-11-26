@@ -7,7 +7,7 @@ import FileiraRolavel from '../../components/FileiraRolavel.jsx'
 import PainelDeTamanho from '../../components/PainelDeTamanho.jsx'
 import ResumoDaEscolha from '../../components/ResumoDaEscolha.jsx'
 import { listarCategorias, listarServicosComVariacoes } from '../../data/consultas.js'
-import { carregarEscolha, resumirEscolha, salvarEscolha } from '../../utils/agendamento.js'
+import { carregarEscolha, encerrarRemarcacao, resumirEscolha, salvarEscolha } from '../../utils/agendamento.js'
 
 const todas = 'Todos'
 
@@ -40,6 +40,10 @@ function Servicos() {
       setCarregando(false)
     }
     carregar()
+  }, [])
+
+  useEffect(() => {
+    encerrarRemarcacao()
   }, [])
 
   useEffect(() => {

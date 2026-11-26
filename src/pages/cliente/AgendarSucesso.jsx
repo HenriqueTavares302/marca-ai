@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { CalendarCheck, CalendarPlus, Check, Download } from 'lucide-react'
+import { CalendarCheck, Check } from 'lucide-react'
+import AcoesDoAgendamento from '../../components/AcoesDoAgendamento.jsx'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import { buscarSalao } from '../../data/consultas.js'
 import { carregarUltimoAgendamento } from '../../utils/agendamento.js'
-import { baixarArquivoDeAgenda, gerarArquivoDeAgenda, linkDoGoogleAgenda } from '../../utils/calendario.js'
-import { formatarDataLonga } from '../../utils/formatos.js'
+import { formatarDataLonga, mensagemParaOSalao } from '../../utils/formatos.js'
 import { partesEmSaoPaulo } from '../../utils/fuso.js'
 
 function AgendarSucesso() {
@@ -35,17 +35,13 @@ function AgendarSucesso() {
     fim: ultimo.fim,
   }
 
-  function baixar() {
-    baixarArquivoDeAgenda(gerarArquivoDeAgenda(evento), 'agendamento-' + inicio.data + '.ics')
-  }
-
   return (
     <>
       <section className="flex flex-col items-center gap-3 pt-4 text-center" role="status">
         <span className="flex size-20 items-center justify-center rounded-full bg-principal text-sobre-principal ring-4 ring-destaque ring-offset-4 ring-offset-fundo">
           <Check className="size-10" strokeWidth={3} aria-hidden="true" />
         </span>
-        <h2 className="text-3xl font-semibold">Horário agendado!</h2>
+        <h2 className="text-3xl font-semibold">{ultimo.remarcado ? 'Horário remarcado!' : 'Horário agendado!'}</h2>
         <p className="text-texto-suave">Te esperamos no salão.</p>
       </section>
 
@@ -64,21 +60,15 @@ function AgendarSucesso() {
         <p className="text-texto-suave">
           {ultimo.valor} · {ultimo.formaPagamento === 'pix' ? 'Pix pelo app' : 'pagamento no salão'}
         </p>
+        {evento && (
+          <AcoesDoAgendamento
+            evento={evento}
+            nomeDoArquivo={'agendamento-' + inicio.data + '.ics'}
+            salao={salao}
+            mensagem={mensagemParaOSalao(salao, formatarDataLonga(inicio.data), inicio.hora, ultimo.servicos.join(' + '))}
+          />
+        )}
       </Card>
-
-      {evento && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Adicionar à agenda do celular</h2>
-          <Botao variante="secundario" larguraTotal aoClicar={baixar}>
-            <Download className="size-5" aria-hidden="true" />
-            Baixar para a agenda
-          </Botao>
-          <Botao variante="secundario" larguraTotal linkExterno={linkDoGoogleAgenda(evento)}>
-            <CalendarPlus className="size-5" aria-hidden="true" />
-            Google Agenda
-          </Botao>
-        </section>
-      )}
 
       <section className="flex flex-col gap-3">
         <Botao para="/meus-agendamentos" larguraTotal grande>

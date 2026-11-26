@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ArrowRight, Check, Info } from 'lucide-react'
+import { ArrowRight, Check, Info, RotateCcw } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
@@ -18,6 +18,7 @@ import {
 import {
   carregarEscolha,
   carregarHorario,
+  carregarRemarcacao,
   carregarProfissional,
   profissionaisQueFazemTudo,
   resumirEscolha,
@@ -25,7 +26,7 @@ import {
   salvarProfissional,
 } from '../../utils/agendamento.js'
 import { formatarDataCurta, formatarDataLonga, nomeCurtoDoDia, numeroDoDia } from '../../utils/formatos.js'
-import { diaDaSemana, hojeEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import { diaDaSemana, hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 
 const quantidadeDeDias = 21
@@ -53,10 +54,29 @@ async function buscarDiaComVaga(dias, aPartirDe, dados) {
   for (let indice = aPartirDe; indice < dias.length; indice++) {
     const data = dias[indice]
     if (!dados.diasAbertos.includes(diaDaSemana(data))) continue
-    const livres = await listarHorariosLivres(data, dados.profissionalId, dados.duracao, dados.servicoIds)
+    const livres = await listarHorariosLivres(
+      data,
+      dados.profissionalId,
+      dados.duracao,
+      dados.servicoIds,
+      dados.ignorarAgendamentoId,
+    )
     if (livres.length > 0) return data
   }
   return null
+}
+
+function AvisoDeRemarcacao({ inicioAnterior }) {
+  const anterior = partesEmSaoPaulo(inicioAnterior)
+  return (
+    <p className="flex items-start gap-2 rounded-2xl border-2 border-principal bg-superficie p-3">
+      <RotateCcw className="mt-0.5 size-5 shrink-0 text-principal" aria-hidden="true" />
+      <span>
+        Remarcando o horário de <span className="font-semibold">{formatarDataCurta(anterior.data)} · {anterior.hora}</span>.
+        Escolha o novo dia e horário.
+      </span>
+    </p>
+  )
 }
 
 function DiaDaFaixa({ data, hoje, aberto, selecionado, aoEscolher }) {
@@ -145,6 +165,7 @@ function AgendarHorario() {
       const profissionalId = profissional ? profissional.id : null
       const servicoIds = resumo.itens.map((item) => item.servico.id)
       const diasAbertos = await listarDiasDeAtendimento(profissionalId, servicoIds)
+      const remarcacao = carregarRemarcacao()
       const novosDados = {
         resumo,
         hoje,
@@ -156,12 +177,20 @@ function AgendarHorario() {
         duracao: resumo.duracaoTotal,
         nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
         nomes: Object.fromEntries(profissionais.map((item) => [item.id, item.nome])),
+        remarcacao,
+        ignorarAgendamentoId: remarcacao ? remarcacao.agendamentoId : null,
       }
 
       let dataInicial = null
       const salvo = carregarHorario()
       if (salvo && possiveis.length > 0) {
-        const livres = await listarHorariosLivres(salvo.data, profissionalId, resumo.duracaoTotal, servicoIds)
+        const livres = await listarHorariosLivres(
+          salvo.data,
+          profissionalId,
+          resumo.duracaoTotal,
+          servicoIds,
+          novosDados.ignorarAgendamentoId,
+        )
         const aindaLivre = dias.includes(salvo.data) && livres.find((horario) => horario.minutos === salvo.minutos)
         if (aindaLivre) {
           const atualizado = { data: salvo.data, minutos: salvo.minutos, profissionalId: aindaLivre.profissionalId }
@@ -199,7 +228,13 @@ function AgendarHorario() {
     let atual = true
     async function carregarHorarios() {
       setHorarios(null)
-      const livres = await listarHorariosLivres(dataSelecionada, dados.profissionalId, dados.duracao, dados.servicoIds)
+      const livres = await listarHorariosLivres(
+        dataSelecionada,
+        dados.profissionalId,
+        dados.duracao,
+        dados.servicoIds,
+        dados.ignorarAgendamentoId,
+      )
       if (atual) setHorarios(livres)
     }
     carregarHorarios()
@@ -279,7 +314,7 @@ function AgendarHorario() {
 
   return (
     <>
-      <IndicadorDePassos passo={2} />
+      {dados.remarcacao ? <AvisoDeRemarcacao inicioAnterior={dados.remarcacao.inicioAnterior} /> : <IndicadorDePassos passo={2} />}
       <ResumoDosServicos resumo={dados.resumo} nomeDoProfissional={dados.nomeDoProfissional} />
 
       {aviso && (
@@ -364,7 +399,7 @@ function AgendarHorario() {
               </span>
               <span className="block text-texto-suave">com {dados.nomes[escolhido.profissionalId]}</span>
             </p>
-            <Botao para="/agendar/dados" larguraTotal grande>
+            <Botao para={dados.remarcacao ? '/agendar/confirmacao' : '/agendar/dados'} larguraTotal grande>
               Continuar
               <ArrowRight className="size-5" aria-hidden="true" />
             </Botao>

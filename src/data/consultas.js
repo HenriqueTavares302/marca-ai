@@ -56,7 +56,13 @@ function candidatosDoHorario(profissionalId, servicoIds) {
   })
 }
 
-export async function listarHorariosLivres(data, profissionalId, duracaoMinutos, servicoIds = []) {
+export async function listarHorariosLivres(
+  data,
+  profissionalId,
+  duracaoMinutos,
+  servicoIds = [],
+  ignorarAgendamentoId = null,
+) {
   const candidatos = candidatosDoHorario(profissionalId, servicoIds)
   return calcularHorariosLivres({
     data,
@@ -64,7 +70,7 @@ export async function listarHorariosLivres(data, profissionalId, duracaoMinutos,
     profissionalIds: candidatos.map((profissional) => profissional.id),
     horariosTrabalho: horarios_trabalho,
     bloqueios,
-    agendamentos: todosOsAgendamentos(),
+    agendamentos: todosOsAgendamentos().filter((agendamento) => agendamento.id !== ignorarAgendamentoId),
     agora: Date.now(),
     intervalo: salao.intervalo_minutos,
     antecedencia: salao.antecedencia_minima_minutos,
@@ -297,5 +303,61 @@ export async function criarAgendamento({ nome, telefone, profissionalId, inicio,
     return { erro: 'nao_salvou' }
   }
 
+  return { agendamento: completarAgendamento(agendamento) }
+}
+
+function dentroDoPrazo(agendamento) {
+  const faltaEmMinutos = (new Date(agendamento.inicio).getTime() - Date.now()) / 60000
+  return agendamento.status === 'agendado' && faltaEmMinutos >= salao.cancelamento_minimo_minutos
+}
+
+export async function listarMeusAgendamentos(ids) {
+  return lerBancoLocal()
+    .agendamentos.filter((agendamento) => ids.includes(agendamento.id))
+    .sort(ordenarPorInicio)
+    .map(completarAgendamento)
+}
+
+export async function cancelarAgendamento(id) {
+  const banco = lerBancoLocal()
+  const agendamento = banco.agendamentos.find((item) => item.id === id)
+  if (!agendamento) return { erro: 'nao_encontrado' }
+  if (!dentroDoPrazo(agendamento)) return { erro: 'fora_do_prazo' }
+
+  agendamento.status = 'cancelado'
+  try {
+    gravarBancoLocal(banco)
+  } catch {
+    return { erro: 'nao_salvou' }
+  }
+  return { agendamento: completarAgendamento(agendamento) }
+}
+
+export async function remarcarAgendamento(id, profissionalId, novoInicio) {
+  const banco = lerBancoLocal()
+  const agendamento = banco.agendamentos.find((item) => item.id === id)
+  if (!agendamento) return { erro: 'nao_encontrado' }
+  if (!dentroDoPrazo(agendamento)) return { erro: 'fora_do_prazo' }
+
+  const duracao = new Date(agendamento.fim).getTime() - new Date(agendamento.inicio).getTime()
+  const inicioMs = new Date(novoInicio).getTime()
+  const fimMs = inicioMs + duracao
+  const ocupado = todosOsAgendamentos().some(
+    (outro) =>
+      outro.id !== id &&
+      outro.profissional_id === profissionalId &&
+      outro.status !== 'cancelado' &&
+      seSobrepoe(inicioMs, fimMs, new Date(outro.inicio).getTime(), new Date(outro.fim).getTime()),
+  )
+  if (ocupado) return { erro: 'horario_ocupado' }
+
+  agendamento.profissional_id = profissionalId
+  agendamento.inicio = new Date(inicioMs).toISOString()
+  agendamento.fim = new Date(fimMs).toISOString()
+  try {
+    gravarBancoLocal(banco)
+  } catch {
+    return { erro: 'nao_salvou' }
+  }
   return { agendamento: completarAgendamento(agendamento) }
 }

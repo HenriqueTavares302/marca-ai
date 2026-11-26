@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarCheck, Info, Store } from 'lucide-react'
+import { CalendarCheck, Info, RotateCcw, Store } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
@@ -9,9 +9,18 @@ import MensagemErro from '../../components/MensagemErro.jsx'
 import PrecoDoServico from '../../components/PrecoDoServico.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
-import { buscarSalao, criarAgendamento, listarHorariosLivres } from '../../data/consultas.js'
 import {
+  buscarSalao,
+  criarAgendamento,
+  listarHorariosLivres,
+  listarMeusAgendamentos,
+  remarcarAgendamento,
+} from '../../data/consultas.js'
+import {
+  adicionarMeuAgendamento,
   carregarDadosDoCliente,
+  carregarRemarcacao,
+  encerrarRemarcacao,
   limparEscolha,
   salvarUltimoAgendamento,
   textoDaQuantidade,
@@ -20,7 +29,7 @@ import {
 import { apenasDigitosDoCelular, erroDoCelular, erroDoNome, formatarCelular } from '../../utils/cliente.js'
 import { carregarResumoDoFluxo } from '../../utils/fluxo.js'
 import { formatarDataLonga, formatarDuracao, formatarPreco } from '../../utils/formatos.js'
-import { instanteEmSaoPaulo } from '../../utils/fuso.js'
+import { instanteEmSaoPaulo, partesEmSaoPaulo } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 
 function Bloco({ titulo, para, children }) {
@@ -28,13 +37,15 @@ function Bloco({ titulo, para, children }) {
     <Card>
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">{titulo}</h2>
-        <Link
-          to={para}
-          aria-label={'Alterar ' + titulo.toLowerCase()}
-          className="flex min-h-12 shrink-0 items-center px-2 font-semibold text-principal underline underline-offset-4"
-        >
-          Alterar
-        </Link>
+        {para && (
+          <Link
+            to={para}
+            aria-label={'Alterar ' + titulo.toLowerCase()}
+            className="flex min-h-12 shrink-0 items-center px-2 font-semibold text-principal underline underline-offset-4"
+          >
+            Alterar
+          </Link>
+        )}
       </div>
       {children}
     </Card>
@@ -90,7 +101,16 @@ function AgendarConfirmacao() {
   useEffect(() => {
     async function carregar() {
       const [fluxo, salao] = await Promise.all([carregarResumoDoFluxo(), buscarSalao()])
-      setDados({ ...fluxo, salao, cliente: carregarDadosDoCliente() })
+      const remarcacao = carregarRemarcacao()
+      if (remarcacao) {
+        const [original] = await listarMeusAgendamentos([remarcacao.agendamentoId])
+        const cliente = original
+          ? { nome: original.cliente.nome, celular: original.cliente.telefone, observacao: original.observacoes || '' }
+          : null
+        setDados({ ...fluxo, salao, cliente, remarcacao, original: original || null })
+        return
+      }
+      setDados({ ...fluxo, salao, cliente: carregarDadosDoCliente(), remarcacao: null, original: null })
     }
     carregar()
   }, [])
@@ -105,12 +125,39 @@ function AgendarConfirmacao() {
     setConfirmando(true)
     setErro('')
 
-    const { resumo, horario, cliente, profissionalEscolhidoId } = dados
+    const { resumo, horario, cliente, profissionalEscolhidoId, original } = dados
     const servicoIds = resumo.itens.map((item) => item.servico.id)
-    const livres = await listarHorariosLivres(horario.data, profissionalEscolhidoId, resumo.duracaoTotal, servicoIds)
+    const livres = await listarHorariosLivres(
+      horario.data,
+      profissionalEscolhidoId,
+      resumo.duracaoTotal,
+      servicoIds,
+      original ? original.id : null,
+    )
     const vaga = livres.find((livre) => livre.minutos === horario.minutos)
     if (!vaga) {
       irParaOPasso2()
+      return
+    }
+    const inicio = new Date(instanteEmSaoPaulo(horario.data, horario.minutos)).toISOString()
+
+    if (original) {
+      const remarcado = await remarcarAgendamento(original.id, vaga.profissionalId, inicio)
+      if (remarcado.erro === 'horario_ocupado') {
+        irParaOPasso2()
+        return
+      }
+      if (remarcado.erro) {
+        setErro(
+          remarcado.erro === 'fora_do_prazo'
+            ? 'Já passou do prazo para remarcar pelo app. Fale com o salão.'
+            : 'Não conseguimos remarcar. Tente de novo.',
+        )
+        setConfirmando(false)
+        enviando.current = false
+        return
+      }
+      terminar(remarcado.agendamento, true)
       return
     }
 
@@ -118,7 +165,7 @@ function AgendarConfirmacao() {
       nome: cliente.nome,
       telefone: apenasDigitosDoCelular(cliente.celular),
       profissionalId: vaga.profissionalId,
-      inicio: new Date(instanteEmSaoPaulo(horario.data, horario.minutos)).toISOString(),
+      inicio,
       itens: resumo.itens.map((item) => ({
         servico_id: item.servico.id,
         variacao_id: item.variacao ? item.variacao.id : null,
@@ -140,17 +187,23 @@ function AgendarConfirmacao() {
       return
     }
 
-    const agendamento = resultado.agendamento
+    adicionarMeuAgendamento(resultado.agendamento.id)
+    terminar(resultado.agendamento, false)
+  }
+
+  function terminar(agendamento, remarcado) {
     salvarUltimoAgendamento({
       id: agendamento.id,
       inicio: agendamento.inicio,
       fim: agendamento.fim,
-      servicos: resumo.itens.map((item) => item.nome),
+      servicos: dados.resumo.itens.map((item) => item.nome),
       profissional: agendamento.profissional.nome,
-      valor: textoDoValorTotal(resumo),
+      valor: textoDoValorTotal(dados.resumo),
       formaPagamento: agendamento.forma_pagamento,
+      remarcado,
     })
     limparEscolha()
+    encerrarRemarcacao()
     navegar('/agendar/sucesso', { replace: true })
   }
 
@@ -166,7 +219,7 @@ function AgendarConfirmacao() {
     )
   }
 
-  const { resumo, horario, cliente, salao } = dados
+  const { resumo, horario, cliente, salao, remarcacao, original } = dados
 
   if (resumo.quantidade === 0) {
     return <SemServicosEscolhidos />
@@ -174,7 +227,16 @@ function AgendarConfirmacao() {
   if (!horario) {
     return <AvisoParaVoltar texto="Escolha o dia e o horário primeiro." botao="Escolher dia e horário" para="/agendar/horario" />
   }
-  if (!cliente || erroDoNome(cliente.nome) || erroDoCelular(cliente.celular)) {
+  if (remarcacao && !original) {
+    return (
+      <AvisoParaVoltar
+        texto="Não encontramos o agendamento para remarcar neste aparelho."
+        botao="Ver meus agendamentos"
+        para="/meus-agendamentos"
+      />
+    )
+  }
+  if (!original && (!cliente || erroDoNome(cliente.nome) || erroDoCelular(cliente.celular))) {
     return <AvisoParaVoltar texto="Falta informar seu nome e celular." botao="Informar meus dados" para="/agendar/dados" />
   }
 
@@ -186,9 +248,16 @@ function AgendarConfirmacao() {
 
   return (
     <>
-      <IndicadorDePassos passo={4} />
+      {original ? (
+        <p className="flex items-start gap-2 rounded-2xl border-2 border-principal bg-superficie p-3">
+          <RotateCcw className="mt-0.5 size-5 shrink-0 text-principal" aria-hidden="true" />
+          Confira o novo horário e confirme a remarcação.
+        </p>
+      ) : (
+        <IndicadorDePassos passo={4} />
+      )}
 
-      <Bloco titulo="Serviços" para="/servicos">
+      <Bloco titulo="Serviços" para={original ? null : '/servicos'}>
         <ul className="divide-y divide-borda">
           {resumo.itens.map((item) => (
             <li key={item.servico.id} className="flex items-start justify-between gap-3 py-2">
@@ -224,7 +293,7 @@ function AgendarConfirmacao() {
         )}
       </Bloco>
 
-      <Bloco titulo="Profissional" para="/agendar">
+      <Bloco titulo="Profissional" para={original ? null : '/agendar'}>
         <p>{dados.nomeDoProfissional}</p>
       </Bloco>
 
@@ -238,14 +307,20 @@ function AgendarConfirmacao() {
             </span>
           </span>
         </p>
+        {original && (
+          <p className="text-texto-suave">
+            Antes: {formatarDataLonga(partesEmSaoPaulo(original.inicio).data)}, {partesEmSaoPaulo(original.inicio).hora}
+          </p>
+        )}
       </Bloco>
 
-      <Bloco titulo="Seus dados" para="/agendar/dados">
+      <Bloco titulo="Seus dados" para={original ? null : '/agendar/dados'}>
         <p>{cliente.nome}</p>
         <p>{formatarCelular(cliente.celular)}</p>
         {cliente.observacao && <p className="text-texto-suave">Observação: {cliente.observacao}</p>}
       </Bloco>
 
+      {!original && (
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl font-semibold">Pagamento</h2>
         {salao.pix_ativo ? (
@@ -281,11 +356,12 @@ function AgendarConfirmacao() {
           </Card>
         )}
       </section>
+      )}
 
       <RodapeFixo>
         {erro && <MensagemErro texto={erro} />}
         <Botao aoClicar={confirmar} carregando={confirmando} larguraTotal grande>
-          {confirmando ? 'Confirmando...' : 'Confirmar agendamento'}
+          {confirmando ? 'Confirmando...' : original ? 'Confirmar remarcação' : 'Confirmar agendamento'}
         </Botao>
       </RodapeFixo>
     </>

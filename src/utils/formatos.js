@@ -66,3 +66,17 @@ export function linkDoMapa(endereco) {
 export function linkDoWhatsapp(numero, mensagem) {
   return 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensagem)
 }
+
+export function mensagemParaOSalao(salao, diaPorExtenso, hora, servicos) {
+  return (
+    'Olá! Tenho um horário marcado no ' +
+    salao.nome +
+    ': ' +
+    diaPorExtenso.toLowerCase() +
+    ', às ' +
+    hora +
+    ' (' +
+    servicos +
+    ').'
+  )
+}

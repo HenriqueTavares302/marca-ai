@@ -22,7 +22,7 @@ function Botao({
   const bloqueado = desabilitado || carregando
   const largura = larguraTotal ? 'w-full' : ''
   const tamanho = grande ? 'min-h-14 text-lg' : 'min-h-12'
-  const classes = `inline-flex items-center justify-center gap-2 rounded-xl border-2 px-6 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${tamanho} ${estilosPorVariante[variante]} ${largura}`
+  const classes = `inline-flex items-center [&>svg]:shrink-0 justify-center gap-2 rounded-xl border-2 px-6 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${tamanho} ${estilosPorVariante[variante]} ${largura}`
 
   if (linkExterno) {
     return (
