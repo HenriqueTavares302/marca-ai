@@ -50,6 +50,11 @@ Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servi
 - Problemas do Top Salão a evitar: cores sem padrão (lilás, azul, roxo, amarelo), pouco contraste, botões minúsculos ("X", "topo", "Hoje"), navegação por setas ▲▼, serviço escondido em lista suspensa, tela inicial "Entrar como cliente / profissional". Na nossa versão, o cliente cai direto na vitrine do salão e o profissional entra por um link "Sou do salão".
 - Diferenciais planejados: ficha do cliente com ficha técnica de coloração, galeria de trabalhos, lista de espera, lembrete de retorno, avaliação pós-atendimento, modo escuro.
 
+## Rotas
+- Definidas em `src/App.jsx` com React Router. Cliente: `/`, `/servicos`, `/agendar`, `/meus-agendamentos` (layout `src/layouts/LayoutCliente.jsx`). Salão: `/salao`, `/salao/servicos`, `/salao/clientes`, `/salao/configuracoes` (layout `src/layouts/LayoutSalao.jsx`). Os itens da barra e o título de cada tela ficam na lista do layout.
+- `/componentes` é a página de teste dos componentes, fora dos layouts. Qualquer outro endereço cai na página "não encontrada".
+- `vercel.json` manda todo endereço para o `index.html`, para recarregar numa rota interna sem dar 404.
+
 ## Comandos
 - `npm install`
 - `npm run dev` (abre também na rede local para testar no celular)

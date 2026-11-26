@@ -11,10 +11,10 @@ import Chip from '../components/Chip.jsx'
 import Seletor from '../components/Seletor.jsx'
 
 const itensDaBarra = [
-  { id: 'inicio', rotulo: 'Início', icone: House },
-  { id: 'agendar', rotulo: 'Agendar', icone: Scissors },
-  { id: 'horarios', rotulo: 'Horários', icone: CalendarDays },
-  { id: 'perfil', rotulo: 'Perfil', icone: User },
+  { caminho: '/', rotulo: 'Início', icone: House, exato: true },
+  { caminho: '/servicos', rotulo: 'Serviços', icone: Scissors },
+  { caminho: '/agendar', rotulo: 'Agendar', icone: CalendarDays },
+  { caminho: '/componentes', rotulo: 'Teste', icone: User },
 ]
 
 const categorias = ['Corte', 'Coloração', 'Escova', 'Tratamento']
@@ -40,7 +40,6 @@ function Componentes() {
   const [telefone, setTelefone] = useState('')
   const [profissional, setProfissional] = useState('')
   const [categoria, setCategoria] = useState('Corte')
-  const [abaAtual, setAbaAtual] = useState('inicio')
   const [aviso, setAviso] = useState(null)
 
   function simularCarregamento() {
@@ -176,13 +175,13 @@ function Componentes() {
         </Secao>
 
         <Secao titulo="Barra inferior">
-          <p className="text-texto-suave">Fica fixa embaixo da tela. Aba atual: {itensDaBarra.find((item) => item.id === abaAtual).rotulo}.</p>
+          <p className="text-texto-suave">Fica fixa embaixo da tela. O item "Teste" está ativo porque é esta página; os outros levam para a área do cliente.</p>
         </Secao>
       </main>
 
       <Aviso aviso={aviso} definirAviso={setAviso} />
 
-      <BarraInferior itens={itensDaBarra} atual={abaAtual} aoEscolher={setAbaAtual} />
+      <BarraInferior itens={itensDaBarra} />
     </div>
   )
 }

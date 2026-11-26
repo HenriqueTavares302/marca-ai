@@ -1,4 +1,6 @@
-function BarraInferior({ itens, atual, aoEscolher }) {
+import { NavLink } from 'react-router-dom'
+
+function BarraInferior({ itens }) {
   return (
     <nav
       aria-label="Navegação principal"
@@ -6,24 +8,29 @@ function BarraInferior({ itens, atual, aoEscolher }) {
     >
       <ul className="mx-auto flex max-w-lg">
         {itens.map((item) => {
-          const ativo = item.id === atual
           const Icone = item.icone
-          const estilo = ativo ? 'font-semibold text-principal' : 'text-texto-suave'
 
           return (
-            <li key={item.id} className="flex-1">
-              <button
-                type="button"
-                onClick={() => aoEscolher(item.id)}
-                aria-current={ativo ? 'page' : undefined}
-                className={`relative flex min-h-16 w-full flex-col items-center justify-center gap-1 text-sm whitespace-nowrap ${estilo}`}
+            <li key={item.caminho} className="flex-1">
+              <NavLink
+                to={item.caminho}
+                end={item.exato}
+                className={({ isActive }) =>
+                  `relative flex min-h-16 w-full flex-col items-center justify-center gap-1 text-sm whitespace-nowrap ${
+                    isActive ? 'font-semibold text-principal' : 'text-texto-suave'
+                  }`
+                }
               >
-                {ativo && (
-                  <span className="absolute top-0 h-1 w-10 rounded-b-full bg-principal" aria-hidden="true" />
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span className="absolute top-0 h-1 w-10 rounded-b-full bg-principal" aria-hidden="true" />
+                    )}
+                    <Icone className="size-6" strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
+                    {item.rotulo}
+                  </>
                 )}
-                <Icone className="size-6" strokeWidth={ativo ? 2.5 : 2} aria-hidden="true" />
-                {item.rotulo}
-              </button>
+              </NavLink>
             </li>
           )
         })}
