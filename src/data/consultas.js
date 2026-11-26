@@ -10,10 +10,25 @@ import { profissionais } from './profissionais.js'
 import { salao } from './salao.js'
 import { servico_variacoes } from './servico_variacoes.js'
 import { categorias, servicos } from './servicos.js'
+import { diaDaSemana, partesEmSaoPaulo } from '../utils/fuso.js'
 import { calcularHorariosLivres } from '../utils/horariosLivres.js'
 
+const statusValidos = ['agendado', 'concluido', 'cancelado', 'faltou']
+
+const mudancasPermitidas = {
+  agendado: ['concluido', 'faltou', 'cancelado'],
+  concluido: ['agendado'],
+  faltou: ['agendado'],
+  cancelado: [],
+}
+
 function todosOsAgendamentos() {
-  return [...agendamentosDeExemplo, ...lerBancoLocal().agendamentos]
+  const banco = lerBancoLocal()
+  const exemplosComAlteracoes = agendamentosDeExemplo.map((agendamento) => {
+    const alteracao = banco.alteracoes_de_status.find((item) => item.agendamento_id === agendamento.id)
+    return alteracao && statusValidos.includes(alteracao.status) ? { ...agendamento, status: alteracao.status } : agendamento
+  })
+  return [...exemplosComAlteracoes, ...banco.agendamentos]
 }
 
 function todosOsItensDeAgendamento() {
@@ -360,4 +375,53 @@ export async function remarcarAgendamento(id, profissionalId, novoInicio) {
     return { erro: 'nao_salvou' }
   }
   return { agendamento: completarAgendamento(agendamento) }
+}
+
+export async function listarAgendaDoDia(data, profissionalId) {
+  const doDia = profissionais.filter(
+    (profissional) => profissional.ativo && (!profissionalId || profissional.id === profissionalId),
+  )
+  const ids = doDia.map((profissional) => profissional.id)
+
+  return {
+    profissionais: doDia,
+    agendamentos: todosOsAgendamentos()
+      .filter((agendamento) => ids.includes(agendamento.profissional_id))
+      .filter((agendamento) => partesEmSaoPaulo(agendamento.inicio).data === data)
+      .sort(ordenarPorInicio)
+      .map(completarAgendamento),
+    bloqueios: bloqueios.filter(
+      (bloqueio) => ids.includes(bloqueio.profissional_id) && partesEmSaoPaulo(bloqueio.inicio).data === data,
+    ),
+    turnos: horarios_trabalho.filter(
+      (horario) => ids.includes(horario.profissional_id) && horario.dia_semana === diaDaSemana(data),
+    ),
+    salaoAberto: horarios_trabalho.some(
+      (horario) =>
+        horario.dia_semana === diaDaSemana(data) &&
+        profissionais.some((profissional) => profissional.ativo && profissional.id === horario.profissional_id),
+    ),
+  }
+}
+
+export async function atualizarStatusAgendamento(id, novoStatus) {
+  const atual = todosOsAgendamentos().find((agendamento) => agendamento.id === id)
+  if (!atual) return { erro: 'nao_encontrado' }
+  if (!(mudancasPermitidas[atual.status] || []).includes(novoStatus)) return { erro: 'mudanca_invalida' }
+
+  const banco = lerBancoLocal()
+  const criadoNoAparelho = banco.agendamentos.find((agendamento) => agendamento.id === id)
+  if (criadoNoAparelho) {
+    criadoNoAparelho.status = novoStatus
+  } else {
+    banco.alteracoes_de_status = banco.alteracoes_de_status.filter((item) => item.agendamento_id !== id)
+    banco.alteracoes_de_status.push({ agendamento_id: id, status: novoStatus })
+  }
+
+  try {
+    gravarBancoLocal(banco)
+  } catch {
+    return { erro: 'nao_salvou' }
+  }
+  return { agendamento: completarAgendamento({ ...atual, status: novoStatus }) }
 }

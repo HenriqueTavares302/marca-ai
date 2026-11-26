@@ -11,9 +11,10 @@ export function lerBancoLocal() {
       clientes: listaOuVazia(salvo && salvo.clientes),
       agendamentos: listaOuVazia(salvo && salvo.agendamentos),
       agendamento_servicos: listaOuVazia(salvo && salvo.agendamento_servicos),
+      alteracoes_de_status: listaOuVazia(salvo && salvo.alteracoes_de_status),
     }
   } catch {
-    return { clientes: [], agendamentos: [], agendamento_servicos: [] }
+    return { clientes: [], agendamentos: [], agendamento_servicos: [], alteracoes_de_status: [] }
   }
 }
 

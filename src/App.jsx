@@ -15,6 +15,7 @@ import Agenda from './pages/salao/Agenda.jsx'
 import Clientes from './pages/salao/Clientes.jsx'
 import Configuracoes from './pages/salao/Configuracoes.jsx'
 import Entrar from './pages/salao/Entrar.jsx'
+import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
 import ServicosDoSalao from './pages/salao/Servicos.jsx'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="servicos" element={<ServicosDoSalao />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="configuracoes" element={<Configuracoes />} />
+        <Route path="novo" element={<NovoAgendamento />} />
       </Route>
 
       <Route path="/componentes" element={<Componentes />} />

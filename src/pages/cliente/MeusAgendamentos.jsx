@@ -1,21 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  CalendarCheck,
   CalendarClock,
   CalendarPlus,
-  CircleCheck,
   CircleX,
   Clock,
   MessageCircle,
   RotateCcw,
-  UserX,
 } from 'lucide-react'
 import AcoesDoAgendamento from '../../components/AcoesDoAgendamento.jsx'
 import Aviso from '../../components/Aviso.jsx'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
-import Chip from '../../components/Chip.jsx'
+import ChipDeStatus from '../../components/ChipDeStatus.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import {
@@ -35,12 +32,6 @@ import {
 import { formatarDataLonga, formatarDuracao, linkDoWhatsapp, mensagemParaOSalao } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo, partesEmSaoPaulo } from '../../utils/fuso.js'
 
-const status = {
-  agendado: { texto: 'Agendado', variante: 'principal', icone: CalendarCheck },
-  concluido: { texto: 'Concluído', variante: 'neutro', icone: CircleCheck },
-  cancelado: { texto: 'Cancelado', variante: 'perigo', icone: CircleX },
-  faltou: { texto: 'Faltou', variante: 'perigo', icone: UserX },
-}
 
 function nomesDosServicos(agendamento) {
   return agendamento.servicos
@@ -68,14 +59,6 @@ function textoDoQuando(agendamento) {
   return { dia: formatarDataLonga(inicio.data), horas: inicio.hora + ' às ' + fim.hora }
 }
 
-function ChipDeStatus({ agendamento }) {
-  const dados = status[agendamento.status] || status.agendado
-  return (
-    <Chip variante={dados.variante} icone={dados.icone}>
-      {dados.texto}
-    </Chip>
-  )
-}
 
 function AgendamentoFuturo({ agendamento, salao, destaque, podeAlterar, aoCancelar, aoRemarcar }) {
   const quando = textoDoQuando(agendamento)
@@ -97,7 +80,7 @@ function AgendamentoFuturo({ agendamento, salao, destaque, podeAlterar, aoCancel
           <CalendarClock className="size-5" aria-hidden="true" />
           {quantoFalta(agendamento)}
         </p>
-        <ChipDeStatus agendamento={agendamento} />
+        <ChipDeStatus valor={agendamento.status} />
       </div>
 
       <p className={destaque ? 'text-xl font-semibold' : 'font-semibold'}>{servicos}</p>
@@ -151,7 +134,7 @@ function AgendamentoPassado({ agendamento, aoAgendarDeNovo }) {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="font-semibold">{nomesDosServicos(agendamento)}</p>
-        <ChipDeStatus agendamento={agendamento} />
+        <ChipDeStatus valor={agendamento.status} />
       </div>
       <p className="text-texto-suave">
         {quando.dia} · {quando.horas} · com {agendamento.profissional.nome}
