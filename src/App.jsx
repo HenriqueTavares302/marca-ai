@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 import LayoutCliente from './layouts/LayoutCliente.jsx'
 import LayoutSalao from './layouts/LayoutSalao.jsx'
 import Componentes from './pages/Componentes.jsx'
@@ -18,9 +18,9 @@ import Entrar from './pages/salao/Entrar.jsx'
 import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
 import ServicosDoSalao from './pages/salao/Servicos.jsx'
 
-function App() {
-  return (
-    <Routes>
+const rotas = createBrowserRouter(
+  createRoutesFromElements(
+    <>
       <Route element={<LayoutCliente />}>
         <Route path="/" element={<Inicio />} />
         <Route path="/servicos" element={<ServicosDoCliente />} />
@@ -43,8 +43,12 @@ function App() {
 
       <Route path="/componentes" element={<Componentes />} />
       <Route path="*" element={<NaoEncontrada />} />
-    </Routes>
-  )
+    </>,
+  ),
+)
+
+function App() {
+  return <RouterProvider router={rotas} />
 }
 
 export default App

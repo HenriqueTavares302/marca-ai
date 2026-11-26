@@ -8,7 +8,14 @@ const itensDoSalao = [
   { caminho: '/salao/servicos', rotulo: 'Serviços', titulo: 'Serviços do salão', icone: Scissors },
   { caminho: '/salao/clientes', rotulo: 'Clientes', titulo: 'Clientes', icone: Users },
   { caminho: '/salao/configuracoes', rotulo: 'Ajustes', titulo: 'Configurações', icone: Settings },
-  { caminho: '/salao/novo', titulo: 'Novo agendamento', foraDaBarra: true, comVoltar: true, voltarPara: '/salao' },
+  {
+    caminho: '/salao/novo',
+    titulo: 'Novo agendamento',
+    foraDaBarra: true,
+    semBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao',
+  },
 ]
 
 function LayoutSalao() {

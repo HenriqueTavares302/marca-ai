@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   CalendarOff,
   ChevronLeft,
@@ -81,18 +82,25 @@ function ItemDeAtendimento({ item, mostrarProfissional, aoAbrir }) {
   )
 }
 
-function ItemSimples({ item, nomeDoProfissional }) {
+function ItemSimples({ item, nomeDoProfissional, data }) {
   const horario = formatarMinutos(item.inicio) + ' às ' + formatarMinutos(item.fim)
   const quem = nomeDoProfissional ? ' · ' + nomeDoProfissional : ''
 
   if (item.tipo === 'livre') {
+    const endereco =
+      '/salao/novo?data=' + data + '&hora=' + formatarMinutos(item.inicio) + '&profissional=' + item.profissionalId
     return (
-      <p className="flex min-h-12 items-center rounded-2xl border-2 border-dashed border-texto-suave px-4 text-texto-suave">
+      <Link
+        to={endereco}
+        aria-label={'Agendar no horário livre de ' + horario + quem}
+        className="flex min-h-12 items-center justify-between gap-2 rounded-2xl border-2 border-dashed border-texto-suave px-4 text-texto-suave"
+      >
         <span>
           <span className="font-semibold">Livre</span> · {horario}
           {quem}
         </span>
-      </p>
+        <Plus className="size-5 shrink-0 text-principal" aria-hidden="true" />
+      </Link>
     )
   }
 
@@ -120,14 +128,23 @@ function MarcaDeAgora({ hora }) {
 function Agenda() {
   const idLogado = profissionalLogado()
   const [agora, setAgora] = useState(() => Date.now())
-  const [data, setData] = useState(() => partesEmSaoPaulo(Date.now()).data)
-  const [soEu, setSoEu] = useState(true)
+  const location = useLocation()
+  const [params] = useSearchParams()
+  const [data, setData] = useState(() => {
+    const pedida = params.get('data')
+    return /^\d{4}-\d{2}-\d{2}$/.test(pedida || '') ? pedida : partesEmSaoPaulo(Date.now()).data
+  })
+  const [soEu, setSoEu] = useState(() => !(location.state && location.state.todos))
   const [versao, setVersao] = useState(0)
   const [dados, setDados] = useState(null)
   const [abertoId, setAbertoId] = useState(null)
   const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [aviso, setAviso] = useState(null)
+  const [aviso, setAviso] = useState(() =>
+    location.state && typeof location.state.aviso === 'string'
+      ? { id: Date.now(), tipo: 'sucesso', mensagem: location.state.aviso }
+      : null,
+  )
   const rolouParaAgora = useRef(false)
   const inicioDoToque = useRef(null)
 
@@ -322,7 +339,12 @@ function Agenda() {
                 />
               )
             }
-            return <ItemSimples key={item.chave} item={item} nomeDoProfissional={soEu ? '' : nomes[item.profissionalId]} />
+            return <ItemSimples
+                key={item.chave}
+                item={item}
+                data={data}
+                nomeDoProfissional={soEu ? '' : nomes[item.profissionalId]}
+              />
           })}
 
         <div className="h-24" aria-hidden="true" />
@@ -389,7 +411,7 @@ function Agenda() {
         )}
       </Dialogo>
 
-      <Aviso aviso={aviso} definirAviso={setAviso} />
+      <Aviso aviso={aviso} definirAviso={setAviso} alto />
     </>
   )
 }

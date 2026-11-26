@@ -29,3 +29,20 @@ export function erroDoNome(texto) {
   if (letras.length < 2) return 'O nome precisa ter pelo menos 2 letras.'
   return ''
 }
+
+export function semAcento(texto) {
+  return String(texto)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+export function filtrarClientes(clientes, busca) {
+  const texto = semAcento(busca).trim()
+  if (texto.length === 0) return []
+  const digitos = String(busca).replace(/\D/g, '')
+  return clientes.filter((cliente) => {
+    if (semAcento(cliente.nome).includes(texto)) return true
+    return digitos.length >= 3 && String(cliente.telefone).includes(digitos)
+  })
+}

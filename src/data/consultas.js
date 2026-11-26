@@ -10,7 +10,7 @@ import { profissionais } from './profissionais.js'
 import { salao } from './salao.js'
 import { servico_variacoes } from './servico_variacoes.js'
 import { categorias, servicos } from './servicos.js'
-import { diaDaSemana, partesEmSaoPaulo } from '../utils/fuso.js'
+import { diaDaSemana, instanteEmSaoPaulo, partesEmSaoPaulo } from '../utils/fuso.js'
 import { calcularHorariosLivres } from '../utils/horariosLivres.js'
 
 const statusValidos = ['agendado', 'concluido', 'cancelado', 'faltou']
@@ -77,6 +77,7 @@ export async function listarHorariosLivres(
   duracaoMinutos,
   servicoIds = [],
   ignorarAgendamentoId = null,
+  semAntecedencia = false,
 ) {
   const candidatos = candidatosDoHorario(profissionalId, servicoIds)
   return calcularHorariosLivres({
@@ -88,7 +89,7 @@ export async function listarHorariosLivres(
     agendamentos: todosOsAgendamentos().filter((agendamento) => agendamento.id !== ignorarAgendamentoId),
     agora: Date.now(),
     intervalo: salao.intervalo_minutos,
-    antecedencia: salao.antecedencia_minima_minutos,
+    antecedencia: semAntecedencia ? 0 : salao.antecedencia_minima_minutos,
   })
 }
 
@@ -424,4 +425,45 @@ export async function atualizarStatusAgendamento(id, novoStatus) {
     return { erro: 'nao_salvou' }
   }
   return { agendamento: completarAgendamento({ ...atual, status: novoStatus }) }
+}
+
+export async function verificarEncaixe(profissionalId, data, minutos, duracaoMinutos) {
+  const inicio = instanteEmSaoPaulo(data, minutos)
+  const fim = inicio + duracaoMinutos * 60000
+  if (fim <= Date.now()) return { erro: 'ja_passou' }
+
+  const atendimento = todosOsAgendamentos().find(
+    (agendamento) =>
+      agendamento.profissional_id === profissionalId &&
+      agendamento.status !== 'cancelado' &&
+      seSobrepoe(inicio, fim, new Date(agendamento.inicio).getTime(), new Date(agendamento.fim).getTime()),
+  )
+  if (atendimento) {
+    const completo = completarAgendamento(atendimento)
+    return {
+      erro: 'conflito',
+      conflito: { tipo: 'atendimento', nome: completo.cliente.nome, inicio: atendimento.inicio, fim: atendimento.fim },
+    }
+  }
+
+  const bloqueio = bloqueios.find(
+    (item) =>
+      item.profissional_id === profissionalId &&
+      seSobrepoe(inicio, fim, new Date(item.inicio).getTime(), new Date(item.fim).getTime()),
+  )
+  if (bloqueio) {
+    return {
+      erro: 'conflito',
+      conflito: { tipo: 'bloqueio', nome: bloqueio.motivo || 'Bloqueio', inicio: bloqueio.inicio, fim: bloqueio.fim },
+    }
+  }
+
+  const turno = horarios_trabalho.find(
+    (horario) => horario.profissional_id === profissionalId && horario.dia_semana === diaDaSemana(data),
+  )
+  const inicioDoTurno = turno ? Number(turno.inicio.slice(0, 2)) * 60 + Number(turno.inicio.slice(3, 5)) : null
+  const fimDoTurno = turno ? Number(turno.fim.slice(0, 2)) * 60 + Number(turno.fim.slice(3, 5)) : null
+  const foraDoExpediente = !turno || minutos < inicioDoTurno || minutos + duracaoMinutos > fimDoTurno
+
+  return { livre: true, foraDoExpediente }
 }

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ArrowRight, Check, Info, RotateCcw } from 'lucide-react'
+import { ArrowRight, Info, RotateCcw } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
+import DiaDaFaixa from '../../components/DiaDaFaixa.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import FileiraRolavel from '../../components/FileiraRolavel.jsx'
+import GradeDeHorarios from '../../components/GradeDeHorarios.jsx'
 import IndicadorDePassos from '../../components/IndicadorDePassos.jsx'
 import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
@@ -25,30 +27,12 @@ import {
   salvarHorario,
   salvarProfissional,
 } from '../../utils/agendamento.js'
-import { formatarDataCurta, formatarDataLonga, nomeCurtoDoDia, numeroDoDia } from '../../utils/formatos.js'
+import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { diaDaSemana, hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
+import { mostrarHorarioEscolhido, rolarFaixaParaODia } from '../../utils/rolagem.js'
 
 const quantidadeDeDias = 21
-
-const periodos = [
-  { nome: 'Manhã', de: 0, ate: 12 * 60 },
-  { nome: 'Tarde', de: 12 * 60, ate: 18 * 60 },
-  { nome: 'Noite', de: 18 * 60, ate: 24 * 60 },
-]
-
-function comportamentoDaRolagem() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-}
-
-function rolarFaixaParaODia(data) {
-  const dia = document.getElementById('dia-' + data)
-  if (!dia) return
-  const faixa = dia.parentElement
-  const centroDoDia = dia.getBoundingClientRect().left + dia.offsetWidth / 2
-  const centroDaFaixa = faixa.getBoundingClientRect().left + faixa.clientWidth / 2
-  faixa.scrollBy({ left: centroDoDia - centroDaFaixa })
-}
 
 async function buscarDiaComVaga(dias, aPartirDe, dados) {
   for (let indice = aPartirDe; indice < dias.length; indice++) {
@@ -76,63 +60,6 @@ function AvisoDeRemarcacao({ inicioAnterior }) {
         Escolha o novo dia e horário.
       </span>
     </p>
-  )
-}
-
-function DiaDaFaixa({ data, hoje, aberto, selecionado, aoEscolher }) {
-  let rotulo = nomeCurtoDoDia(data)
-  if (data === hoje) rotulo = 'Hoje'
-  if (data === somarDias(hoje, 1)) rotulo = 'Amanhã'
-
-  if (!aberto) {
-    return (
-      <span
-        id={'dia-' + data}
-        className="flex min-h-20 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-texto-suave px-1 text-texto-suave"
-      >
-        <span>{rotulo}</span>
-        <span className="text-lg font-semibold">{numeroDoDia(data)}</span>
-        <span>Fechado</span>
-      </span>
-    )
-  }
-
-  const cores = selecionado
-    ? 'border-principal bg-principal text-sobre-principal'
-    : 'border-texto-suave bg-superficie text-texto'
-
-  return (
-    <button
-      id={'dia-' + data}
-      type="button"
-      onClick={aoEscolher}
-      aria-pressed={selecionado}
-      aria-label={formatarDataLonga(data) + (rotulo === 'Hoje' || rotulo === 'Amanhã' ? ', ' + rotulo.toLowerCase() : '')}
-      className={`flex min-h-20 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl border-2 px-1 ${cores}`}
-    >
-      <span>{rotulo}</span>
-      <span className="text-lg font-semibold">{numeroDoDia(data)}</span>
-      <span className="flex h-6 items-center">{selecionado && <Check className="size-5" aria-hidden="true" />}</span>
-    </button>
-  )
-}
-
-function BotaoDeHorario({ horario, selecionado, aoEscolher }) {
-  const cores = selecionado
-    ? 'border-principal bg-principal text-sobre-principal'
-    : 'border-texto-suave bg-superficie text-texto'
-
-  return (
-    <button
-      type="button"
-      onClick={aoEscolher}
-      aria-pressed={selecionado}
-      data-horario-escolhido={selecionado}
-      className={`flex min-h-12 items-center justify-center gap-1 rounded-xl border-2 font-semibold ${cores}`}
-    >
-      {selecionado && <Check className="size-4" aria-hidden="true" />}
-      {horario.hora}
-    </button>
   )
 }
 
@@ -247,14 +174,7 @@ function AgendarHorario() {
   useEffect(() => {
     if (!escolhido) return
     const espera = setTimeout(() => {
-      const botao = document.querySelector('[data-horario-escolhido="true"]')
-      const rodape = document.getElementById('rodape-fixo')
-      if (!botao || !rodape) return
-      const limite = window.innerHeight - rodape.offsetHeight - 12
-      const fundoDoBotao = botao.getBoundingClientRect().bottom
-      if (fundoDoBotao > limite) {
-        window.scrollBy({ top: fundoDoBotao - limite, behavior: comportamentoDaRolagem() })
-      }
+      mostrarHorarioEscolhido()
     }, 150)
     return () => clearTimeout(espera)
   }, [escolhido])
@@ -366,27 +286,13 @@ function AgendarHorario() {
           </Card>
         )}
 
-        {horarios !== null &&
-          horarios.length > 0 &&
-          periodos.map((periodo) => {
-            const doPeriodo = horarios.filter((horario) => horario.minutos >= periodo.de && horario.minutos < periodo.ate)
-            if (doPeriodo.length === 0) return null
-            return (
-              <div key={periodo.nome} className="flex flex-col gap-2">
-                <h3 className="text-lg font-semibold">{periodo.nome}</h3>
-                <div className="grid grid-cols-4 gap-2">
-                  {doPeriodo.map((horario) => (
-                    <BotaoDeHorario
-                      key={horario.minutos}
-                      horario={horario}
-                      selecionado={Boolean(escolhidoNesteDia && escolhidoNesteDia.minutos === horario.minutos)}
-                      aoEscolher={() => escolherHorario(horario)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+        {horarios !== null && horarios.length > 0 && (
+          <GradeDeHorarios
+            horarios={horarios}
+            minutosEscolhidos={escolhidoNesteDia ? escolhidoNesteDia.minutos : null}
+            aoEscolher={escolherHorario}
+          />
+        )}
       </section>
 
       <RodapeFixo>
