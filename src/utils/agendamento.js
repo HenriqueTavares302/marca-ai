@@ -1,6 +1,42 @@
 import { formatarPreco } from './formatos.js'
 
 const chave = 'marca-ai:escolha'
+const chaveDoProfissional = 'marca-ai:profissional'
+
+export function carregarProfissional() {
+  try {
+    const salvo = sessionStorage.getItem(chaveDoProfissional)
+    const id = salvo ? Number(salvo) : null
+    return Number.isInteger(id) ? id : null
+  } catch {
+    return null
+  }
+}
+
+export function salvarProfissional(id) {
+  try {
+    if (id === null) {
+      sessionStorage.removeItem(chaveDoProfissional)
+    } else {
+      sessionStorage.setItem(chaveDoProfissional, String(id))
+    }
+  } catch {
+    return
+  }
+}
+
+export function servicosQueFaltam(profissional, itens) {
+  return itens.filter((item) => !profissional.servico_ids.includes(item.servico.id)).map((item) => item.servico)
+}
+
+export function profissionaisQueFazemTudo(profissionais, itens) {
+  return profissionais.filter((profissional) => servicosQueFaltam(profissional, itens).length === 0)
+}
+
+export function juntarComE(lista) {
+  if (lista.length <= 1) return lista.join('')
+  return lista.slice(0, -1).join(', ') + ' e ' + lista[lista.length - 1]
+}
 
 export function carregarEscolha() {
   try {
@@ -23,6 +59,7 @@ export function salvarEscolha(escolha) {
 export function limparEscolha() {
   try {
     sessionStorage.removeItem(chave)
+    sessionStorage.removeItem(chaveDoProfissional)
   } catch {
     return
   }

@@ -34,6 +34,7 @@ function LayoutDaArea({ itens }) {
   }
 
   const mostrarCabecalho = !(itemAtual && itemAtual.semCabecalho)
+  const mostrarBarra = !(itemAtual && itemAtual.semBarra)
   const aoVoltar = itemAtual && itemAtual.comVoltar ? voltar : undefined
 
   return (
@@ -42,7 +43,7 @@ function LayoutDaArea({ itens }) {
       <main className="mx-auto flex max-w-lg flex-col gap-6 p-4">
         <Outlet />
       </main>
-      <BarraInferior itens={itensDaBarra} />
+      {mostrarBarra && <BarraInferior itens={itensDaBarra} />}
     </div>
   )
 }

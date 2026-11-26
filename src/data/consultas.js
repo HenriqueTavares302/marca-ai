@@ -18,6 +18,17 @@ export async function listarProfissionais() {
   return profissionais.filter((profissional) => profissional.ativo)
 }
 
+export async function listarProfissionaisComServicos() {
+  return profissionais
+    .filter((profissional) => profissional.ativo)
+    .map((profissional) => ({
+      ...profissional,
+      servico_ids: profissional_servicos
+        .filter((ligacao) => ligacao.profissional_id === profissional.id)
+        .map((ligacao) => ligacao.servico_id),
+    }))
+}
+
 export async function buscarProfissional(id) {
   return profissionais.find((profissional) => profissional.id === id) || null
 }

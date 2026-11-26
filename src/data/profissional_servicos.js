@@ -6,7 +6,6 @@ export const profissional_servicos = [
   { profissional_id: 1, servico_id: 5 },
   { profissional_id: 1, servico_id: 6 },
   { profissional_id: 1, servico_id: 7 },
-  { profissional_id: 1, servico_id: 8 },
   { profissional_id: 1, servico_id: 9 },
   { profissional_id: 1, servico_id: 10 },
   { profissional_id: 1, servico_id: 11 },

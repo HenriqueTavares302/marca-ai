@@ -6,6 +6,7 @@ import NaoEncontrada from './pages/NaoEncontrada.jsx'
 import Agendar from './pages/cliente/Agendar.jsx'
 import Inicio from './pages/cliente/Inicio.jsx'
 import MeusAgendamentos from './pages/cliente/MeusAgendamentos.jsx'
+import PassoEmConstrucao from './pages/cliente/PassoEmConstrucao.jsx'
 import ServicosDoCliente from './pages/cliente/Servicos.jsx'
 import Agenda from './pages/salao/Agenda.jsx'
 import Clientes from './pages/salao/Clientes.jsx'
@@ -19,6 +20,30 @@ function App() {
         <Route path="/" element={<Inicio />} />
         <Route path="/servicos" element={<ServicosDoCliente />} />
         <Route path="/agendar" element={<Agendar />} />
+        <Route
+          path="/agendar/horario"
+          element={
+            <PassoEmConstrucao
+              passo={2}
+              texto="Aqui você vai escolher o dia e o horário livre."
+              proximoCaminho="/agendar/dados"
+            />
+          }
+        />
+        <Route
+          path="/agendar/dados"
+          element={
+            <PassoEmConstrucao
+              passo={3}
+              texto="Aqui você vai informar nome e celular."
+              proximoCaminho="/agendar/confirmacao"
+            />
+          }
+        />
+        <Route
+          path="/agendar/confirmacao"
+          element={<PassoEmConstrucao passo={4} texto="Aqui você vai revisar tudo e confirmar o agendamento." />}
+        />
         <Route path="/meus-agendamentos" element={<MeusAgendamentos />} />
       </Route>
 
