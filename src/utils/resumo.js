@@ -3,10 +3,10 @@ import { formatarDataCurta, formatarDataLonga, nomeDoMes } from './formatos.js'
 import { diaDaSemana, somarDias } from './fuso.js'
 
 export const formasRecebidas = [
-  { valor: 'dinheiro', rotulo: 'Dinheiro' },
-  { valor: 'pix', rotulo: 'Pix' },
-  { valor: 'debito', rotulo: 'Cartão de débito' },
-  { valor: 'credito', rotulo: 'Cartão de crédito' },
+  { valor: 'dinheiro', rotulo: 'Dinheiro', curto: 'Dinheiro' },
+  { valor: 'pix', rotulo: 'Pix', curto: 'Pix' },
+  { valor: 'debito', rotulo: 'Cartão de débito', curto: 'Débito' },
+  { valor: 'credito', rotulo: 'Cartão de crédito', curto: 'Crédito' },
 ]
 
 export const tiposDePeriodo = [

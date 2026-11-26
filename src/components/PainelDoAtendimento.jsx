@@ -79,7 +79,7 @@ function DetalheDoAtendimento({ agendamento, salao, salvando, aoMudarStatus, aoP
       {agendamento.status === 'concluido' && agendamento.forma_recebida ? (
         <p>
           Recebido: <span className="font-semibold">{formatarPreco(agendamento.valor_total || 0)}</span> em{' '}
-          {formasRecebidas.find((forma) => forma.valor === agendamento.forma_recebida).rotulo.toLowerCase()}
+          {formasRecebidas.find((forma) => forma.valor === agendamento.forma_recebida).curto}
         </p>
       ) : (
         <p>
