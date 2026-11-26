@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarDays, CircleCheck, CircleX, Clock, House, Scissors, Star, User } from 'lucide-react'
 import Aviso from '../components/Aviso.jsx'
 import BarraInferior from '../components/BarraInferior.jsx'
@@ -9,6 +9,25 @@ import CampoTexto from '../components/CampoTexto.jsx'
 import Card from '../components/Card.jsx'
 import Chip from '../components/Chip.jsx'
 import Seletor from '../components/Seletor.jsx'
+import { agendamentosDoDia, buscarSalao, listarServicosPorCategoria } from '../data/consultas.js'
+
+const textoDoStatus = {
+  agendado: 'Agendado',
+  concluido: 'Concluído',
+  cancelado: 'Cancelado',
+  faltou: 'Faltou',
+}
+
+const varianteDoStatus = {
+  agendado: 'principal',
+  concluido: 'neutro',
+  cancelado: 'perigo',
+  faltou: 'perigo',
+}
+
+function formatarHora(dataIso) {
+  return new Date(dataIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
 
 const itensDaBarra = [
   { caminho: '/', rotulo: 'Início', icone: House, exato: true },
@@ -41,6 +60,21 @@ function Componentes() {
   const [profissional, setProfissional] = useState('')
   const [categoria, setCategoria] = useState('Corte')
   const [aviso, setAviso] = useState(null)
+  const [nomeDoSalao, setNomeDoSalao] = useState('')
+  const [gruposDeServicos, setGruposDeServicos] = useState([])
+  const [agendamentosDeHoje, setAgendamentosDeHoje] = useState([])
+
+  useEffect(() => {
+    async function carregarDados() {
+      const salao = await buscarSalao()
+      setNomeDoSalao(salao.nome)
+      setGruposDeServicos(await listarServicosPorCategoria())
+      setAgendamentosDeHoje(await agendamentosDoDia(new Date()))
+    }
+    carregarDados()
+  }, [])
+
+  const totalDeServicos = gruposDeServicos.reduce((total, grupo) => total + grupo.servicos.length, 0)
 
   function simularCarregamento() {
     setCarregando(true)
@@ -172,6 +206,28 @@ function Componentes() {
               Mostrar erro
             </Botao>
           </div>
+        </Secao>
+
+        <Secao titulo="Dados de exemplo">
+          <Card>
+            <p className="font-semibold">{nomeDoSalao}</p>
+            <p>
+              {totalDeServicos} serviços em {gruposDeServicos.length} categorias:{' '}
+              {gruposDeServicos.map((grupo) => grupo.categoria).join(', ')}.
+            </p>
+            <p>{agendamentosDeHoje.length} agendamentos hoje:</p>
+            <ul className="flex flex-col gap-2">
+              {agendamentosDeHoje.map((agendamento) => (
+                <li key={agendamento.id} className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{formatarHora(agendamento.inicio)}</span>
+                  <span>
+                    {agendamento.cliente.nome} com {agendamento.profissional.nome.split(' ')[0]}
+                  </span>
+                  <Chip variante={varianteDoStatus[agendamento.status]}>{textoDoStatus[agendamento.status]}</Chip>
+                </li>
+              ))}
+            </ul>
+          </Card>
         </Secao>
 
         <Secao titulo="Barra inferior">

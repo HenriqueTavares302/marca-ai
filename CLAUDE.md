@@ -25,7 +25,7 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 - Plano grátis do Supabase pausa o projeto após 7 dias sem atividade e não tem backup automático; por isso existe a issue de rotina de backup.
 
 ## Banco de dados
-Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servicos, servico_variacoes, profissional_servicos, horarios_trabalho, bloqueios, clientes, agendamentos, agendamento_servicos. A tabela agendamentos tem uma restrição (`sem_conflito_de_horario`) que impede dois agendamentos sobrepostos para o mesmo profissional. Até a milestone 4, as telas usam dados de exemplo em `src/data/` com os mesmos campos das tabelas.
+Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servicos, servico_variacoes, profissional_servicos, horarios_trabalho, bloqueios, clientes, agendamentos, agendamento_servicos. A tabela agendamentos tem uma restrição (`sem_conflito_de_horario`) que impede dois agendamentos sobrepostos para o mesmo profissional. Até a milestone 4, as telas usam dados de exemplo em `src/data/` com os mesmos campos das tabelas. As telas nunca leem os arrays direto: usam só as funções de `src/data/consultas.js`, que são `async` (com `await` dentro de `useEffect`). Na milestone 4, só o conteúdo dessas funções muda para o Supabase. As datas dos agendamentos de exemplo são calculadas a partir do dia de hoje.
 
 ## Visual
 - Paleta verde e dourado:
