@@ -40,6 +40,40 @@ export async function listarServicosPorCategoria() {
     .filter((grupo) => grupo.servicos.length > 0)
 }
 
+export async function listarServicosPopulares(quantidade) {
+  const idsValidos = agendamentos
+    .filter((agendamento) => agendamento.status !== 'cancelado')
+    .map((agendamento) => agendamento.id)
+  const contagem = {}
+  for (const item of agendamento_servicos) {
+    if (!idsValidos.includes(item.agendamento_id)) continue
+    contagem[item.servico_id] = (contagem[item.servico_id] || 0) + 1
+  }
+  const ativos = await listarServicos()
+  return ativos
+    .map((servico) => ({ ...servico, vezes: contagem[servico.id] || 0 }))
+    .sort((a, b) => b.vezes - a.vezes || a.ordem - b.ordem)
+    .slice(0, quantidade)
+}
+
+export async function listarHorarioDoSalao() {
+  const idsAtivos = profissionais.filter((profissional) => profissional.ativo).map((profissional) => profissional.id)
+  const semana = [null, null, null, null, null, null, null]
+
+  for (const horario of horarios_trabalho) {
+    if (!idsAtivos.includes(horario.profissional_id)) continue
+    const atual = semana[horario.dia_semana]
+    if (!atual) {
+      semana[horario.dia_semana] = { inicio: horario.inicio, fim: horario.fim }
+    } else {
+      if (horario.inicio < atual.inicio) atual.inicio = horario.inicio
+      if (horario.fim > atual.fim) atual.fim = horario.fim
+    }
+  }
+
+  return semana
+}
+
 export async function listarVariacoes(servicoId) {
   return servico_variacoes
     .filter((variacao) => variacao.servico_id === servicoId)

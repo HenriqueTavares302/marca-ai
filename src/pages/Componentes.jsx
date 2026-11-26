@@ -32,7 +32,7 @@ function formatarHora(dataIso) {
 const itensDaBarra = [
   { caminho: '/', rotulo: 'Início', icone: House, exato: true },
   { caminho: '/servicos', rotulo: 'Serviços', icone: Scissors },
-  { caminho: '/agendar', rotulo: 'Agendar', icone: CalendarDays },
+  { caminho: '/meus-agendamentos', rotulo: 'Horários', icone: CalendarDays },
   { caminho: '/componentes', rotulo: 'Teste', icone: User },
 ]
 

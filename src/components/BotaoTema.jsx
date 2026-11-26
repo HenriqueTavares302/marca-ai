@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
 
 function temaInicial() {
   return document.documentElement.dataset.tema === 'escuro' ? 'escuro' : 'claro'
 }
 
-function BotaoTema() {
+function BotaoTema({ redondo = false }) {
   const [tema, setTema] = useState(temaInicial)
 
   useEffect(() => {
@@ -22,6 +23,20 @@ function BotaoTema() {
 
   function trocarTema() {
     setTema(tema === 'escuro' ? 'claro' : 'escuro')
+  }
+
+  if (redondo) {
+    const Icone = tema === 'escuro' ? Sun : Moon
+    return (
+      <button
+        type="button"
+        onClick={trocarTema}
+        aria-label={tema === 'escuro' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+        className="flex size-12 items-center justify-center rounded-full border border-sobre-capa/30 bg-sobre-capa/10 text-sobre-capa focus-visible:outline-sobre-capa"
+      >
+        <Icone className="size-5" aria-hidden="true" />
+      </button>
+    )
   }
 
   return (

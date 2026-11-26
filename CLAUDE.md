@@ -16,6 +16,7 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 - Código simples e direto, que um iniciante consiga ler: JavaScript (não TypeScript), componentes funcionais, `useState`/`useEffect`, nada de bibliotecas ou padrões avançados sem necessidade.
 - Nomes de arquivos, componentes, variáveis e textos da tela em português.
 - Nunca colocar chaves secretas no código. Só `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no `.env` (que não vai para o Git).
+- Dados de exemplo nunca usam telefones, e-mails ou documentos que possam ser reais: telefones sempre com DDD 00, e-mails @exemplo.com.
 
 ## Tecnologias
 - React + Vite + Tailwind CSS (v4, via `@tailwindcss/vite`).
@@ -35,8 +36,9 @@ Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servi
   - destaque (dourado) `#C9A15B` — só em detalhes (ícones, selos, estrelas); nunca como cor de texto sobre o fundo claro
 - Ter modo escuro.
 - Fontes: Inter no texto, Fraunces nos títulos (h1 a h3), via Google Fonts por enquanto; baixar para dentro do projeto na issue do PWA.
-- Classes de cor do tema (em `src/index.css`, trocam sozinhas entre claro e escuro). As telas usam só estas: `bg-fundo`, `text-texto`, `text-texto-suave`, `bg-superficie`, `border-borda`, `bg-principal`, `text-sobre-principal`, `text-destaque`, `bg-perigo`, `text-perigo`, `text-sobre-perigo`. Bordas de destaque usam as mesmas cores: `border-principal`, `border-perigo` e `border-texto-suave` (essa última em campos de formulário, porque `border-borda` é clara demais para contornar um campo).
-- Componentes base em `src/components/`: Botao, Card, CampoTexto, Seletor, Chip, Cabecalho, BarraInferior, Aviso e BotaoTema. Usar esses antes de criar novos.
+- Classes de cor do tema (em `src/index.css`, trocam sozinhas entre claro e escuro). As telas usam só estas: `bg-fundo`, `text-texto`, `text-texto-suave`, `bg-superficie`, `border-borda`, `bg-principal`, `text-sobre-principal`, `text-destaque`, `bg-perigo`, `text-perigo`, `text-sobre-perigo`, `bg-capa`, `text-sobre-capa` (capa da vitrine: verde-escuro nos dois modos; o dourado sobre ela é só enfeite, porque fica com 4:1). Bordas de destaque usam as mesmas cores: `border-principal`, `border-perigo` e `border-texto-suave` (essa última em campos de formulário, porque `border-borda` é clara demais para contornar um campo).
+- Componentes base em `src/components/`: Botao, Card, CampoTexto, Seletor, Chip, Cabecalho, BarraInferior, Aviso e BotaoTema. Usar esses antes de criar novos. O Botao vira link com `para` (rota interna) ou `linkExterno` (abre em outra janela).
+- Funções de formatação (preço, duração, links do Maps e do WhatsApp) em `src/utils/formatos.js`; aberto/fechado e horário da semana em `src/utils/horarios.js`, calculados a partir dos horários de trabalho (não existe horário de funcionamento escrito à mão).
 - Rótulos da barra inferior com 14 px e nomes curtos (ex.: Início, Agendar, Horários, Perfil), que caibam sem quebrar em celular de 360 px.
 - Telas com a barra inferior precisam de espaço embaixo para o conteúdo não ficar escondido: `pb-[calc(7rem+env(safe-area-inset-bottom))]`.
 - Aviso: sucesso some em 5 s; erro só fecha no X.
@@ -47,11 +49,13 @@ Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servi
 - Cardápio de serviços com preço visível, inclusive tintura e escova, com variação por tamanho de cabelo (curto, médio, longo). O dono escolhe mostrar preço fixo, "a partir de" ou "sob consulta".
 - Agendamento do cliente em poucos passos: serviços → profissional → data e horário → confirmação.
 - Pagamento opcional: pagar no salão é o padrão; Pix pelo app é opcional (com sinal configurável).
-- Problemas do Top Salão a evitar: cores sem padrão (lilás, azul, roxo, amarelo), pouco contraste, botões minúsculos ("X", "topo", "Hoje"), navegação por setas ▲▼, serviço escondido em lista suspensa, tela inicial "Entrar como cliente / profissional". Na nossa versão, o cliente cai direto na vitrine do salão e o profissional entra por um link "Sou do salão".
+- Problemas do Top Salão a evitar: cores sem padrão (lilás, azul, roxo, amarelo), pouco contraste, botões minúsculos ("X", "topo", "Hoje"), navegação por setas ▲▼, serviço escondido em lista suspensa, tela inicial "Entrar como cliente / profissional".
+- Entrada: o cliente cai direto na vitrine (sem tela de escolha). Rodapé tem "Entrar como profissional". Quando houver login (issues #11 e #23), a capa ganha um botão "Entrar" para o cliente acessar os próprios horários.
 - Diferenciais planejados: ficha do cliente com ficha técnica de coloração, galeria de trabalhos, lista de espera, lembrete de retorno, avaliação pós-atendimento, modo escuro.
 
 ## Rotas
-- Definidas em `src/App.jsx` com React Router. Cliente: `/`, `/servicos`, `/agendar`, `/meus-agendamentos` (layout `src/layouts/LayoutCliente.jsx`). Salão: `/salao`, `/salao/servicos`, `/salao/clientes`, `/salao/configuracoes` (layout `src/layouts/LayoutSalao.jsx`). Os itens da barra e o título de cada tela ficam na lista do layout.
+- Definidas em `src/App.jsx` com React Router. Cliente: `/`, `/servicos`, `/agendar`, `/meus-agendamentos` (layout `src/layouts/LayoutCliente.jsx`).
+- Caminho único do agendamento: a barra do cliente tem 3 itens, Início (`/`), Serviços (`/servicos`) e Horários (`/meus-agendamentos`). `/servicos` é o cardápio e também o primeiro passo do agendamento: o cliente escolhe os serviços ali e continua. `/agendar` é o restante do fluxo (profissional → data e horário → identificação → confirmação), sem item na barra e com botão voltar no cabeçalho. O botão "Agendar horário" da vitrine leva para `/servicos`. Salão: `/salao`, `/salao/servicos`, `/salao/clientes`, `/salao/configuracoes` (layout `src/layouts/LayoutSalao.jsx`). Os itens da barra e o título de cada tela ficam na lista do layout.
 - `/componentes` é a página de teste dos componentes, fora dos layouts. Qualquer outro endereço cai na página "não encontrada".
 - `vercel.json` manda todo endereço para o `index.html`, para recarregar numa rota interna sem dar 404.
 

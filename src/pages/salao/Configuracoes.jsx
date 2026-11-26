@@ -9,7 +9,7 @@ function Configuracoes() {
         to="/"
         className="mx-auto flex min-h-12 items-center px-4 font-medium text-principal underline underline-offset-4"
       >
-        Ver o salão como cliente
+        Ver como cliente
       </Link>
     </>
   )

@@ -13,6 +13,8 @@
   --cor-destaque: #c9a15b;
   --cor-perigo: #b3261e;
   --cor-sobre-perigo: #ffffff;
+  --cor-capa: #1f4d3a;
+  --cor-sobre-capa: #ffffff;
   color-scheme: light;
 }
 
@@ -27,6 +29,8 @@
   --cor-destaque: #d4b072;
   --cor-perigo: #f2a49c;
   --cor-sobre-perigo: #2b0f0c;
+  --cor-capa: #183e2f;
+  --cor-sobre-capa: #ffffff;
   color-scheme: dark;
 }
 
@@ -41,6 +45,8 @@
   --color-destaque: var(--cor-destaque);
   --color-perigo: var(--cor-perigo);
   --color-sobre-perigo: var(--cor-sobre-perigo);
+  --color-capa: var(--cor-capa);
+  --color-sobre-capa: var(--cor-sobre-capa);
 }
 
 @theme {

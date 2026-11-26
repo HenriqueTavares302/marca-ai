@@ -1,11 +1,11 @@
-import { CalendarCheck, CalendarPlus, House, Scissors } from 'lucide-react'
+import { CalendarCheck, House, Scissors } from 'lucide-react'
 import LayoutDaArea from '../components/LayoutDaArea.jsx'
 
 const itensDoCliente = [
-  { caminho: '/', rotulo: 'Início', titulo: 'Marca Aí', icone: House, exato: true },
+  { caminho: '/', rotulo: 'Início', titulo: 'Marca Aí', icone: House, exato: true, semCabecalho: true },
   { caminho: '/servicos', rotulo: 'Serviços', titulo: 'Serviços', icone: Scissors },
-  { caminho: '/agendar', rotulo: 'Agendar', titulo: 'Agendar horário', icone: CalendarPlus },
   { caminho: '/meus-agendamentos', rotulo: 'Horários', titulo: 'Meus agendamentos', icone: CalendarCheck },
+  { caminho: '/agendar', titulo: 'Agendar horário', foraDaBarra: true, comVoltar: true, voltarPara: '/servicos' },
 ]
 
 function LayoutCliente() {
