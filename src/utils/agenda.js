@@ -82,6 +82,11 @@ export function montarLinhaDoTempo({ data, agendamentos, bloqueios, turnos, prof
   )
 }
 
+export function tipoDoPrecoGuardado(item) {
+  if (item.preco === null) return 'consulta'
+  return item.servico && item.servico.tipo_preco === 'a_partir' ? 'a_partir' : 'fixo'
+}
+
 export function valorDoAgendamento(agendamento) {
   let total = 0
   let temValor = false
@@ -89,7 +94,7 @@ export function valorDoAgendamento(agendamento) {
   let aCombinar = false
 
   for (const item of agendamento.servicos) {
-    if (item.preco === null || (item.servico && item.servico.tipo_preco === 'consulta')) {
+    if (item.preco === null) {
       aCombinar = true
       continue
     }

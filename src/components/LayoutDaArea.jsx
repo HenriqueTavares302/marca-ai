@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import BarraInferior from './BarraInferior.jsx'
 import BotaoTema from './BotaoTema.jsx'
 import Cabecalho from './Cabecalho.jsx'
@@ -8,7 +8,7 @@ function LayoutDaArea({ itens }) {
   const { pathname } = useLocation()
   const navegar = useNavigate()
   const caminho = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
-  const itemAtual = itens.find((item) => item.caminho === caminho)
+  const itemAtual = itens.find((item) => matchPath(item.caminho, caminho))
   let titulo = 'Marca Aí'
   if (itemAtual) {
     titulo = typeof itemAtual.titulo === 'function' ? itemAtual.titulo() : itemAtual.titulo

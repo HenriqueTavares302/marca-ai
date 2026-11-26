@@ -16,6 +16,22 @@ const itensDoSalao = [
     comVoltar: true,
     voltarPara: '/salao',
   },
+  {
+    caminho: '/salao/servicos/novo',
+    titulo: 'Novo serviço',
+    foraDaBarra: true,
+    semBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao/servicos',
+  },
+  {
+    caminho: '/salao/servicos/:id',
+    titulo: 'Editar serviço',
+    foraDaBarra: true,
+    semBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao/servicos',
+  },
 ]
 
 function LayoutSalao() {

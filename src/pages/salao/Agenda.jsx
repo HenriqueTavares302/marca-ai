@@ -24,7 +24,7 @@ import Esqueleto from '../../components/Esqueleto.jsx'
 import PainelInferior from '../../components/PainelInferior.jsx'
 import PrecoDoServico from '../../components/PrecoDoServico.jsx'
 import { atualizarStatusAgendamento, buscarSalao, listarAgendaDoDia } from '../../data/consultas.js'
-import { montarLinhaDoTempo, resumirDia, textoDoValor, valorDoAgendamento } from '../../utils/agenda.js'
+import { montarLinhaDoTempo, resumirDia, textoDoValor, tipoDoPrecoGuardado, valorDoAgendamento } from '../../utils/agenda.js'
 import { apenasDigitosDoCelular, formatarCelular } from '../../utils/cliente.js'
 import { formatarDataCurta, formatarDataLonga, linkDoWhatsapp } from '../../utils/formatos.js'
 import { partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
@@ -454,7 +454,7 @@ function DetalheDoAtendimento({ agendamento, salao, salvando, aoMudarStatus, aoP
         {agendamento.servicos.map((item) => (
           <li key={item.id} className="flex items-start justify-between gap-3 py-2">
             <span>{item.variacao ? item.servico.nome + ' · ' + item.variacao.nome : item.servico.nome}</span>
-            <PrecoDoServico tipoPreco={item.servico.tipo_preco} preco={item.preco} />
+            <PrecoDoServico tipoPreco={tipoDoPrecoGuardado(item)} preco={item.preco} />
           </li>
         ))}
         <li className="flex items-start justify-between gap-3 py-2">

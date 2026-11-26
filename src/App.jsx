@@ -16,6 +16,7 @@ import Clientes from './pages/salao/Clientes.jsx'
 import Configuracoes from './pages/salao/Configuracoes.jsx'
 import Entrar from './pages/salao/Entrar.jsx'
 import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
+import FormularioDeServico from './pages/salao/FormularioDeServico.jsx'
 import ServicosDoSalao from './pages/salao/Servicos.jsx'
 
 const rotas = createBrowserRouter(
@@ -36,6 +37,8 @@ const rotas = createBrowserRouter(
       <Route path="/salao" element={<LayoutSalao />}>
         <Route index element={<Agenda />} />
         <Route path="servicos" element={<ServicosDoSalao />} />
+        <Route path="servicos/novo" element={<FormularioDeServico />} />
+        <Route path="servicos/:id" element={<FormularioDeServico />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="novo" element={<NovoAgendamento />} />
