@@ -35,7 +35,11 @@ Script em `supabase/01_tabelas.sql` (já testado). Tabelas: profissionais, servi
   - destaque (dourado) `#C9A15B` — só em detalhes (ícones, selos, estrelas); nunca como cor de texto sobre o fundo claro
 - Ter modo escuro.
 - Fontes: Inter no texto, Fraunces nos títulos (h1 a h3), via Google Fonts por enquanto; baixar para dentro do projeto na issue do PWA.
-- Classes de cor do tema (em `src/index.css`, trocam sozinhas entre claro e escuro). As telas usam só estas: `bg-fundo`, `text-texto`, `text-texto-suave`, `bg-superficie`, `border-borda`, `bg-principal`, `text-sobre-principal`, `text-destaque`.
+- Classes de cor do tema (em `src/index.css`, trocam sozinhas entre claro e escuro). As telas usam só estas: `bg-fundo`, `text-texto`, `text-texto-suave`, `bg-superficie`, `border-borda`, `bg-principal`, `text-sobre-principal`, `text-destaque`, `bg-perigo`, `text-perigo`, `text-sobre-perigo`. Bordas de destaque usam as mesmas cores: `border-principal`, `border-perigo` e `border-texto-suave` (essa última em campos de formulário, porque `border-borda` é clara demais para contornar um campo).
+- Componentes base em `src/components/`: Botao, Card, CampoTexto, Seletor, Chip, Cabecalho, BarraInferior, Aviso e BotaoTema. Usar esses antes de criar novos.
+- Rótulos da barra inferior com 14 px e nomes curtos (ex.: Início, Agendar, Horários, Perfil), que caibam sem quebrar em celular de 360 px.
+- Telas com a barra inferior precisam de espaço embaixo para o conteúdo não ficar escondido: `pb-[calc(7rem+env(safe-area-inset-bottom))]`.
+- Aviso: sucesso some em 5 s; erro só fecha no X.
 - Mobile-first, visual limpo e acolhedor, fotos grandes, pouco texto por tela.
 - Acessibilidade: contraste de texto ≥ 4,5:1, botões com no mínimo 48 px de altura, texto do corpo ≥ 16 px, não depender só de cor para mostrar estado (livre, ocupado, confirmado).
 

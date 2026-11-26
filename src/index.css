@@ -11,6 +11,8 @@
   --cor-principal: #1f4d3a;
   --cor-sobre-principal: #ffffff;
   --cor-destaque: #c9a15b;
+  --cor-perigo: #b3261e;
+  --cor-sobre-perigo: #ffffff;
   color-scheme: light;
 }
 
@@ -23,6 +25,8 @@
   --cor-principal: #8cc7a8;
   --cor-sobre-principal: #10251c;
   --cor-destaque: #d4b072;
+  --cor-perigo: #f2a49c;
+  --cor-sobre-perigo: #2b0f0c;
   color-scheme: dark;
 }
 
@@ -35,6 +39,8 @@
   --color-principal: var(--cor-principal);
   --color-sobre-principal: var(--cor-sobre-principal);
   --color-destaque: var(--cor-destaque);
+  --color-perigo: var(--cor-perigo);
+  --color-sobre-perigo: var(--cor-sobre-perigo);
 }
 
 @theme {
@@ -61,5 +67,15 @@
   h3 {
     font-family: var(--font-titulo);
     line-height: 1.2;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--cor-principal);
+    outline-offset: 3px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }

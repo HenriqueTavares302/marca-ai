@@ -1,7 +1,7 @@
-import Inicio from './pages/Inicio.jsx'
+import Componentes from './pages/Componentes.jsx'
 
 function App() {
-  return <Inicio />
+  return <Componentes />
 }
 
 export default App
