@@ -551,26 +551,27 @@ select pg_temp.confere('--- PERMISSÕES', true);
 select pg_temp.confere('anon não tem permissão em nenhuma tabela',
   (select bool_and(not has_table_privilege('anon', c.oid, 'select, insert, update, delete'))
    from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'));
-select pg_temp.confere('anon executa só as 5 funções do cliente',
+select pg_temp.confere('anon executa só as 7 funções do cliente',
   (select string_agg(p.proname, ',' order by p.proname) from pg_proc p
    where p.pronamespace in ('public'::regnamespace, 'privado'::regnamespace) and has_function_privilege('anon', p.oid, 'execute'))
-  = 'cancelar_agendamento,criar_agendamento,meus_agendamentos,remarcar_agendamento,vitrine');
+  = 'cancelar_agendamento,criar_agendamento,dias_abertos,horarios_livres,meus_agendamentos,remarcar_agendamento,vitrine');
 select pg_temp.confere('authenticated executa só as funções liberadas',
   (select string_agg(nome, ',' order by nome) from (
      select p.pronamespace::regnamespace || '.' || p.proname as nome from pg_proc p
      where p.pronamespace in ('public'::regnamespace, 'privado'::regnamespace) and has_function_privilege('authenticated', p.oid, 'execute')
    ) x)
-  = 'privado.atendi_cliente,privado.meu_profissional,privado.meu_salao,privado.sou_dono,privado.vejo_cliente,public.cancelar_agendamento,public.criar_agendamento,public.meus_agendamentos,public.mudar_status_agendamento,public.remarcar_agendamento,public.remover_dados_do_cliente,public.salao_criar_agendamento,public.vitrine');
+  = 'privado.atendi_cliente,privado.meu_profissional,privado.meu_salao,privado.sou_dono,privado.vejo_cliente,public.cancelar_agendamento,public.conferir_encaixe,public.criar_agendamento,public.dias_abertos,public.horarios_livres,public.meus_agendamentos,public.mudar_status_agendamento,public.remarcar_agendamento,public.remover_dados_do_cliente,public.salao_criar_agendamento,public.salao_dias_abertos,public.salao_horarios_livres,public.vitrine');
 select pg_temp.confere('nenhuma função liberada para public',
   (select bool_and(p.proacl is not null and not exists (select 1 from aclexplode(p.proacl) a where a.grantee = 0))
    from pg_proc p where p.pronamespace in ('public'::regnamespace, 'privado'::regnamespace)));
-select pg_temp.confere('as 19 funções security definer do Marca Aí com search_path vazio',
-  (select bool_and(p.proconfig = array['search_path=""']) and count(*) = 19 from pg_proc p
+select pg_temp.confere('as 24 funções security definer do Marca Aí com search_path vazio',
+  (select bool_and(p.proconfig = array['search_path=""']) and count(*) = 24 from pg_proc p
    where p.prosecdef and (
      p.pronamespace = 'privado'::regnamespace
      or (p.pronamespace = 'public'::regnamespace and p.proname in (
        'vitrine', 'criar_agendamento', 'meus_agendamentos', 'cancelar_agendamento', 'remarcar_agendamento',
-       'salao_criar_agendamento', 'mudar_status_agendamento', 'remover_dados_do_cliente'
+       'salao_criar_agendamento', 'mudar_status_agendamento', 'remover_dados_do_cliente',
+       'horarios_livres', 'dias_abertos', 'salao_horarios_livres', 'salao_dias_abertos', 'conferir_encaixe'
      ))
    )));
 select pg_temp.confere('pgcrypto e btree_gist no esquema extensions',
