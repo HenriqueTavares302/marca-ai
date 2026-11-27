@@ -12,7 +12,7 @@ import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
 import { partesEmSaoPaulo } from '../../utils/fuso.js'
 import { precoParaMostrar } from '../../utils/precos.js'
-import { agruparHorariosDaSemana, situacaoDoSalao } from '../../utils/horarios.js'
+import { agruparHorariosDaSemana, horarioEmBaixo, situacaoDoSalao } from '../../utils/horarios.js'
 import { profissionalLogado } from '../../utils/sessao.js'
 
 function StatusDoSalao({ semana, agora }) {
@@ -199,13 +199,17 @@ function Inicio() {
             <dl className="divide-y divide-borda">
               {agruparHorariosDaSemana(semana).map((grupo) => {
                 const ehHoje = grupo.dias.includes(diaDeHoje)
+                const emBaixo = horarioEmBaixo(grupo, ehHoje)
+                const linha = emBaixo ? 'flex flex-col gap-0.5' : 'flex justify-between gap-3'
                 return (
-                  <div key={grupo.nome} className={`flex justify-between gap-3 py-2 ${ehHoje ? 'font-semibold' : ''}`}>
+                  <div key={grupo.nome} className={`${linha} py-2 ${ehHoje ? 'font-semibold' : ''}`}>
                     <dt>
                       {grupo.nome}
                       {ehHoje && <span className="ml-2 text-principal">(hoje)</span>}
                     </dt>
-                    <dd className={`text-right ${grupo.horario === 'Fechado' ? 'text-texto-suave' : ''}`}>{grupo.horario}</dd>
+                    <dd className={`${emBaixo ? '' : 'text-right'} ${grupo.horario === 'Fechado' ? 'text-texto-suave' : ''}`}>
+                      {grupo.horario}
+                    </dd>
                   </div>
                 )
               })}

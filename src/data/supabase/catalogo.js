@@ -34,9 +34,12 @@ export function servicosComVariacoes(vitrine) {
 }
 
 export function servicosPopulares(vitrine, quantidade) {
-  return servicosComVariacoes(vitrine)
-    .map((servico) => ({ ...servico, vezes: 0 }))
-    .slice(0, quantidade)
+  const servicos = servicosComVariacoes(vitrine)
+  const pedidos = vitrine.mais_pedidos
+    .map((id) => servicos.find((servico) => servico.id === id))
+    .filter((servico) => servico)
+  const resto = servicos.filter((servico) => !pedidos.includes(servico))
+  return [...pedidos, ...resto].slice(0, quantidade)
 }
 
 export function categoriasComServicos(vitrine) {

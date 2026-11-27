@@ -70,3 +70,8 @@ export function agruparHorariosDaSemana(semana) {
     }
   })
 }
+
+export function horarioEmBaixo(grupo, ehHoje) {
+  const letrasDoDia = grupo.nome.length + (ehHoje ? ' (hoje)'.length : 0)
+  return letrasDoDia + grupo.horario.length > 32
+}

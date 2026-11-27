@@ -75,6 +75,7 @@ export function traduzirVitrine(resposta) {
       variacao_id: ligacao.variacao_id,
       preco: numeroOuNulo(ligacao.preco),
     })),
+    mais_pedidos: lista(resposta.mais_pedidos).filter((id) => Number.isInteger(id)),
     horarios_trabalho: lista(resposta.horarios_trabalho).map((horario) => ({
       profissional_id: horario.profissional_id,
       dia_semana: horario.dia_semana,
