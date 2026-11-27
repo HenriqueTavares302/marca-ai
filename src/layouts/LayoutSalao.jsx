@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { CalendarDays, Scissors, Settings, Users } from 'lucide-react'
 import LayoutDaArea from '../components/LayoutDaArea.jsx'
-import { profissionalLogado } from '../utils/sessao.js'
+import { aoSairDaConta, conferirSessao, profissionalLogado } from '../utils/sessao.js'
 
 const itensDoSalao = [
   { caminho: '/salao', rotulo: 'Agenda', titulo: 'Agenda', icone: CalendarDays, exato: true },
@@ -89,8 +90,25 @@ const itensDoSalao = [
 
 function LayoutSalao() {
   const { pathname } = useLocation()
+  const [semSessao, setSemSessao] = useState(profissionalLogado() === null)
 
-  if (profissionalLogado() === null) {
+  useEffect(() => {
+    let ativo = true
+    async function conferir() {
+      const perfil = await conferirSessao()
+      if (ativo && !perfil) setSemSessao(true)
+    }
+    conferir()
+    const pararDeOuvir = aoSairDaConta(() => {
+      if (ativo) setSemSessao(true)
+    })
+    return () => {
+      ativo = false
+      pararDeOuvir()
+    }
+  }, [])
+
+  if (semSessao || profissionalLogado() === null) {
     return <Navigate to="/salao/entrar" replace state={{ voltarPara: pathname }} />
   }
 

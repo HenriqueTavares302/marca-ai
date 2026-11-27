@@ -16,6 +16,8 @@ import Clientes from './pages/salao/Clientes.jsx'
 import Bloqueios from './pages/salao/Bloqueios.jsx'
 import Configuracoes from './pages/salao/Configuracoes.jsx'
 import Entrar from './pages/salao/Entrar.jsx'
+import EsqueciSenha from './pages/salao/EsqueciSenha.jsx'
+import NovaSenha from './pages/salao/NovaSenha.jsx'
 import FichaDoCliente from './pages/salao/FichaDoCliente.jsx'
 import FormularioDeCliente from './pages/salao/FormularioDeCliente.jsx'
 import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
@@ -40,6 +42,8 @@ const rotas = createBrowserRouter(
       </Route>
 
       <Route path="/salao/entrar" element={<Entrar />} />
+      <Route path="/salao/esqueci-senha" element={<EsqueciSenha />} />
+      <Route path="/salao/nova-senha" element={<NovaSenha />} />
       <Route path="/salao" element={<LayoutSalao />}>
         <Route index element={<Agenda />} />
         <Route path="servicos" element={<ServicosDoSalao />} />

@@ -36,8 +36,8 @@ function Configuracoes() {
   const navegar = useNavigate()
   const [confirmandoSaida, setConfirmandoSaida] = useState(false)
 
-  function confirmarSaida() {
-    sair()
+  async function confirmarSaida() {
+    await sair()
     navegar('/', { replace: true })
   }
 
