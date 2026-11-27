@@ -474,6 +474,16 @@ select pg_temp.igual('dono vê todos os agendamentos do salão',
   'authenticated', 'a0000000-0000-4000-8000-000000000001',
   $c$select to_jsonb(count(*)) from public.agendamentos$c$,
   (select to_jsonb(count(*)) from public.agendamentos where salao_id = '00000000-0000-4000-8000-000000000001'));
+select pg_temp.recusa('dono não lê o hash do código secreto (agendamentos.codigo_hash)',
+  'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select to_jsonb(count(codigo_hash)) from public.agendamentos$c$, 'permission denied');
+select pg_temp.recusa('Ana não lê o hash do código secreto',
+  'authenticated', 'a0000000-0000-4000-8000-000000000002',
+  $c$select to_jsonb(count(codigo_hash)) from public.agendamentos$c$, 'permission denied');
+select pg_temp.igual('dono lê as outras colunas dos agendamentos',
+  'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select to_jsonb(count(*)) from (select id, salao_id, cliente_id, profissional_id, inicio, fim, status, valor_total,
+    forma_pagamento, pago, forma_recebida, observacoes, criado_em from public.agendamentos where id = 9) x$c$, '1');
 select pg_temp.igual('dono vê todos os clientes do salão',
   'authenticated', 'a0000000-0000-4000-8000-000000000001',
   $c$select to_jsonb(count(*)) from public.clientes$c$,
@@ -554,9 +564,15 @@ select pg_temp.confere('authenticated executa só as funções liberadas',
 select pg_temp.confere('nenhuma função liberada para public',
   (select bool_and(p.proacl is not null and not exists (select 1 from aclexplode(p.proacl) a where a.grantee = 0))
    from pg_proc p where p.pronamespace in ('public'::regnamespace, 'privado'::regnamespace)));
-select pg_temp.confere('todas as funções security definer com search_path vazio',
-  (select bool_and(p.proconfig = array['search_path=""']) from pg_proc p
-   where p.pronamespace in ('public'::regnamespace, 'privado'::regnamespace) and p.prosecdef));
+select pg_temp.confere('as 19 funções security definer do Marca Aí com search_path vazio',
+  (select bool_and(p.proconfig = array['search_path=""']) and count(*) = 19 from pg_proc p
+   where p.prosecdef and (
+     p.pronamespace = 'privado'::regnamespace
+     or (p.pronamespace = 'public'::regnamespace and p.proname in (
+       'vitrine', 'criar_agendamento', 'meus_agendamentos', 'cancelar_agendamento', 'remarcar_agendamento',
+       'salao_criar_agendamento', 'mudar_status_agendamento', 'remover_dados_do_cliente'
+     ))
+   )));
 select pg_temp.confere('pgcrypto e btree_gist no esquema extensions',
   (select bool_and(e.extnamespace = 'extensions'::regnamespace) and count(*) = 2
    from pg_extension e where e.extname in ('pgcrypto', 'btree_gist')));
