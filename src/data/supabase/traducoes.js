@@ -84,3 +84,66 @@ export function traduzirVitrine(resposta) {
     })),
   }
 }
+
+function horaEmMinutos(hora) {
+  const partes = /^(\d{2}):(\d{2})/.exec(String(hora))
+  return partes ? Number(partes[1]) * 60 + Number(partes[2]) : null
+}
+
+export function traduzirHorariosLivres(resposta) {
+  const horarios = resposta && Array.isArray(resposta.horarios) ? resposta.horarios : []
+  return horarios
+    .map((horario) => ({
+      minutos: horaEmMinutos(horario.hora),
+      hora: String(horario.hora).slice(0, 5),
+      profissionalId: horario.profissional ? horario.profissional.id : null,
+    }))
+    .filter((horario) => horario.minutos !== null && Number.isInteger(horario.profissionalId))
+}
+
+export function traduzirDias(resposta) {
+  return lista(resposta).map((dia) => ({
+    data: dia.data,
+    aberto: dia.aberto === true,
+    temHorarioLivre: dia.tem_horario_livre === true,
+  }))
+}
+
+function traduzirItem(item, vitrine) {
+  const doCardapio = vitrine ? vitrine.servicos.find((servico) => servico.id === item.servico_id) : null
+  const variacaoId = item.variacao_id ?? null
+  const variacaoDoCardapio =
+    vitrine && variacaoId !== null ? vitrine.servico_variacoes.find((variacao) => variacao.id === variacaoId) : null
+  const preco = numeroOuNulo(item.preco)
+  return {
+    id: item.servico_id,
+    servico_id: item.servico_id,
+    variacao_id: variacaoId,
+    preco,
+    duracao_min: numeroOuNulo(item.duracao_min),
+    servico: doCardapio
+      ? { ...doCardapio, nome: item.nome }
+      : { id: item.servico_id, nome: item.nome, tipo_preco: preco === null ? 'consulta' : 'fixo', ativo: false },
+    variacao: variacaoId === null ? null : variacaoDoCardapio || { id: variacaoId, nome: item.variacao },
+  }
+}
+
+export function traduzirAgendamento(resposta, vitrine) {
+  if (!resposta || typeof resposta !== 'object' || !Number.isInteger(resposta.id)) return null
+  const profissional = resposta.profissional || {}
+  return {
+    id: resposta.id,
+    inicio: resposta.inicio,
+    fim: resposta.fim,
+    status: resposta.status,
+    valor_total: numeroOuNulo(resposta.valor_total),
+    forma_pagamento: resposta.forma_pagamento,
+    pago: resposta.pago === true,
+    pode_alterar: resposta.pode_alterar === true,
+    profissional_id: profissional.id ?? null,
+    profissional: { id: profissional.id ?? null, nome: profissional.nome || '', foto_url: profissional.foto_url ?? null },
+    cliente: resposta.cliente ? { nome: resposta.cliente.nome, telefone: resposta.cliente.telefone } : null,
+    observacoes: null,
+    servicos: lista(resposta.servicos).map((item) => traduzirItem(item, vitrine)),
+  }
+}

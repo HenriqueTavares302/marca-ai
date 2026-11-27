@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   CalendarClock,
   CalendarPlus,
   CircleX,
   Clock,
+  Info,
   MessageCircle,
   RotateCcw,
 } from 'lucide-react'
 import AcoesDoAgendamento from '../../components/AcoesDoAgendamento.jsx'
 import Aviso from '../../components/Aviso.jsx'
+import AvisoDaVolta from '../../components/AvisoDaVolta.jsx'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import ChipDeStatus from '../../components/ChipDeStatus.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import {
   buscarSalao,
@@ -21,6 +24,8 @@ import {
   listarMeusAgendamentos,
   listarProfissionaisComServicos,
 } from '../../data/consultas.js'
+import { codigoDoProblema, mensagemDoErro } from '../../data/supabase/erros.js'
+import { dispensarAvisoDosHorariosDeTeste, temAvisoDosHorariosDeTeste } from '../../data/supabase/meusCodigos.js'
 import {
   carregarMeusAgendamentos,
   encerrarRemarcacao,
@@ -128,6 +133,42 @@ function AgendamentoFuturo({ agendamento, salao, destaque, podeAlterar, aoCancel
   )
 }
 
+function AvisoDosHorariosDeTeste({ salao, aoFechar }) {
+  return (
+    <Card>
+      <p className="flex items-start gap-2 font-semibold">
+        <Info className="mt-0.5 size-5 shrink-0 text-principal" aria-hidden="true" />
+        Os horários marcados antes neste aparelho eram de teste e foram apagados.
+      </p>
+      <p className="text-texto-suave">Se você marcou algo, confirme com o salão pelo WhatsApp.</p>
+      {salao.whatsapp && (
+        <Botao
+          variante="secundario"
+          larguraTotal
+          linkExterno={linkDoWhatsapp(salao.whatsapp, 'Olá! Marquei um horário pelo app antes e queria confirmar se está marcado.')}
+        >
+          <MessageCircle className="size-5" aria-hidden="true" />
+          Falar com o salão
+        </Botao>
+      )}
+      <Botao variante="secundario" larguraTotal aoClicar={aoFechar}>
+        Entendi
+      </Botao>
+    </Card>
+  )
+}
+
+const mensagensDoCancelamento = {
+  fora_do_prazo: 'Já passou do prazo para cancelar pelo app. Fale com o salão.',
+  nao_encontrado: 'Não encontramos esse agendamento. Ele pode ter sido cancelado pelo salão.',
+}
+
+function mensagemDoCancelamento(codigo) {
+  if (mensagensDoCancelamento[codigo]) return mensagensDoCancelamento[codigo]
+  if (['sem_internet', 'servidor_indisponivel', 'muitas_tentativas'].includes(codigo)) return mensagemDoErro(codigo)
+  return 'Não conseguimos cancelar. Tente de novo.'
+}
+
 function AgendamentoPassado({ agendamento, aoAgendarDeNovo }) {
   const quando = textoDoQuando(agendamento)
   return (
@@ -149,7 +190,11 @@ function AgendamentoPassado({ agendamento, aoAgendarDeNovo }) {
 
 function MeusAgendamentos() {
   const navegar = useNavigate()
+  const location = useLocation()
+  const avisoDaVolta = location.state && location.state.aviso ? location.state.aviso : ''
   const [dados, setDados] = useState(null)
+  const [erro, setErro] = useState(null)
+  const [avisoDeTeste, setAvisoDeTeste] = useState(temAvisoDosHorariosDeTeste)
   const [paraCancelar, setParaCancelar] = useState(null)
   const [cancelando, setCancelando] = useState(false)
   const [aviso, setAviso] = useState(null)
@@ -161,12 +206,17 @@ function MeusAgendamentos() {
 
   useEffect(() => {
     async function carregar() {
-      const [lista, salao, profissionais] = await Promise.all([
-        listarMeusAgendamentos(carregarMeusAgendamentos()),
-        buscarSalao(),
-        listarProfissionaisComServicos(),
-      ])
-      setDados({ lista, salao, profissionais, agora: Date.now() })
+      try {
+        const [lista, salao, profissionais] = await Promise.all([
+          listarMeusAgendamentos(carregarMeusAgendamentos()),
+          buscarSalao(),
+          listarProfissionaisComServicos(),
+        ])
+        setDados({ lista, salao, profissionais, agora: Date.now() })
+        setErro(null)
+      } catch (problema) {
+        setErro(codigoDoProblema(problema))
+      }
     }
     carregar()
   }, [versao])
@@ -176,10 +226,8 @@ function MeusAgendamentos() {
     const resultado = await cancelarAgendamento(paraCancelar.id)
     setCancelando(false)
     setParaCancelar(null)
-    if (resultado.erro === 'fora_do_prazo') {
-      setAviso({ id: Date.now(), tipo: 'erro', mensagem: 'Já passou do prazo para cancelar pelo app. Fale com o salão.' })
-    } else if (resultado.erro) {
-      setAviso({ id: Date.now(), tipo: 'erro', mensagem: 'Não conseguimos cancelar. Tente de novo.' })
+    if (resultado.erro) {
+      setAviso({ id: Date.now(), tipo: 'erro', mensagem: mensagemDoCancelamento(resultado.erro) })
     } else {
       setAviso({ id: Date.now(), tipo: 'sucesso', mensagem: 'Horário cancelado.' })
     }
@@ -206,6 +254,24 @@ function MeusAgendamentos() {
     navegar('/servicos')
   }
 
+  function fecharAvisoDeTeste() {
+    dispensarAvisoDosHorariosDeTeste()
+    setAvisoDeTeste(false)
+  }
+
+  if (erro) {
+    return (
+      <ErroAoCarregar
+        codigo={erro}
+        aoTentarDeNovo={() => {
+          setErro(null)
+          setDados(null)
+          setVersao(versao + 1)
+        }}
+      />
+    )
+  }
+
   if (!dados) {
     return (
       <>
@@ -224,17 +290,26 @@ function MeusAgendamentos() {
   )
   const historico = lista.filter((agendamento) => !futuros.includes(agendamento)).reverse()
   const [proximo, ...outrosFuturos] = futuros
+  const avisosDoTopo = (
+    <>
+      <AvisoDaVolta texto={avisoDaVolta} />
+      {avisoDeTeste && <AvisoDosHorariosDeTeste salao={salao} aoFechar={fecharAvisoDeTeste} />}
+    </>
+  )
 
   if (lista.length === 0) {
     return (
-      <Card>
-        <p className="font-semibold">Você ainda não tem horários marcados neste aparelho.</p>
-        <p className="text-texto-suave">Quando você agendar por aqui, seus horários aparecem nesta tela.</p>
-        <Botao para="/servicos" larguraTotal grande>
-          <CalendarPlus className="size-6" aria-hidden="true" />
-          Agendar horário
-        </Botao>
-      </Card>
+      <>
+        {avisosDoTopo}
+        <Card>
+          <p className="font-semibold">Você ainda não tem horários marcados neste aparelho.</p>
+          <p className="text-texto-suave">Quando você agendar por aqui, seus horários aparecem nesta tela.</p>
+          <Botao para="/servicos" larguraTotal grande>
+            <CalendarPlus className="size-6" aria-hidden="true" />
+            Agendar horário
+          </Botao>
+        </Card>
+      </>
     )
   }
 
@@ -244,7 +319,9 @@ function MeusAgendamentos() {
         agendamento={agendamento}
         salao={salao}
         destaque={destaque}
-        podeAlterar={podeAlterarAgendamento(agendamento, salao.cancelamento_minimo_minutos, agora)}
+        podeAlterar={
+          agendamento.pode_alterar !== false && podeAlterarAgendamento(agendamento, salao.cancelamento_minimo_minutos, agora)
+        }
         aoCancelar={() => setParaCancelar(agendamento)}
         aoRemarcar={() => remarcar(agendamento)}
       />
@@ -253,6 +330,7 @@ function MeusAgendamentos() {
 
   return (
     <>
+      {avisosDoTopo}
       <p className="text-texto-suave">Mostramos os horários marcados neste aparelho.</p>
 
       <section className="flex flex-col gap-3">

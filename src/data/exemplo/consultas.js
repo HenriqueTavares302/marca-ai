@@ -229,6 +229,10 @@ export async function listarDatasAbertas(profissionalId, servicoIds, datas) {
   )
 }
 
+export async function listarDiasLotados() {
+  return []
+}
+
 export async function buscarProfissional(id) {
   return profissionais.find((profissional) => profissional.id === id) || null
 }

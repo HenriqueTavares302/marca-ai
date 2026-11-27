@@ -306,3 +306,10 @@ export function textoDaFaixa(faixa) {
   }
   return faixa.aCombinar ? texto + ' + valor a combinar' : texto
 }
+
+export function itensParaOBanco(resumo) {
+  return resumo.itens.map((item) => ({
+    servico_id: item.servico.id,
+    variacao_id: item.variacao ? item.variacao.id : null,
+  }))
+}

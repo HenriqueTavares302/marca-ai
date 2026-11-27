@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { ArrowRight, CircleAlert, Info } from 'lucide-react'
+import AvisoDaVolta from '../../components/AvisoDaVolta.jsx'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import CardProfissional from '../../components/CardProfissional.jsx'
@@ -36,6 +38,8 @@ function Agendar() {
   const [dados, setDados] = useState(null)
   const [profissionalId, setProfissionalId] = useState(null)
   const [avisoDeTroca, setAvisoDeTroca] = useState('')
+  const location = useLocation()
+  const avisoDaVolta = location.state && location.state.aviso ? location.state.aviso : ''
   const [erro, setErro] = useState(null)
   const [tentando, setTentando] = useState(false)
   const [tentativa, setTentativa] = useState(0)
@@ -129,6 +133,7 @@ function Agendar() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl font-semibold">Com quem você quer agendar?</h2>
+        <AvisoDaVolta texto={avisoDaVolta} />
 
         {avisoDeTroca && (
           <p role="status" className="flex items-start gap-2 rounded-2xl border-2 border-principal bg-superficie p-3">

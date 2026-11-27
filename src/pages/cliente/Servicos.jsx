@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import AvisoDaVolta from '../../components/AvisoDaVolta.jsx'
 import CardServico from '../../components/CardServico.jsx'
 import Card from '../../components/Card.jsx'
 import Chip from '../../components/Chip.jsx'
@@ -27,6 +29,8 @@ function CardCarregando() {
 }
 
 function Servicos() {
+  const location = useLocation()
+  const avisoDaVolta = location.state && location.state.aviso ? location.state.aviso : ''
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState(null)
   const [tentativa, setTentativa] = useState(0)
@@ -117,6 +121,7 @@ function Servicos() {
 
   return (
     <>
+      <AvisoDaVolta texto={avisoDaVolta} />
       <p className="text-texto-suave">Toque nos serviços que você quer. Depois é só continuar.</p>
 
       <div className="sticky top-16 z-[5] -mx-4 -my-2 bg-fundo py-2">

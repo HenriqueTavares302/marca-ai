@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarCheck, Info, RotateCcw, Store } from 'lucide-react'
+import { CalendarCheck, CalendarDays, Info, MessageCircle, RotateCcw, Store } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import IndicadorDePassos from '../../components/IndicadorDePassos.jsx'
 import MensagemErro from '../../components/MensagemErro.jsx'
@@ -16,12 +17,15 @@ import {
   listarMeusAgendamentos,
   remarcarAgendamento,
 } from '../../data/consultas.js'
+import { codigoDoProblema, mensagemDoErro } from '../../data/supabase/erros.js'
+import { limparCacheDaVitrine } from '../../data/supabase/vitrine.js'
 import {
   adicionarMeuAgendamento,
   carregarDadosDoCliente,
   carregarRemarcacao,
   encerrarRemarcacao,
   carregarEscolha,
+  itensParaOBanco,
   limparEscolha,
   resumirEscolha,
   salvarHorario,
@@ -31,7 +35,8 @@ import {
 } from '../../utils/agendamento.js'
 import { apenasDigitosDoCelular, erroDoCelular, erroDoNome, formatarCelular } from '../../utils/cliente.js'
 import { carregarResumoDoFluxo } from '../../utils/fluxo.js'
-import { formatarDataLonga, formatarDuracao, formatarPreco } from '../../utils/formatos.js'
+import { destinoDoErro, mensagemDoLimite } from '../../utils/errosDoAgendamento.js'
+import { formatarDataLonga, formatarDuracao, formatarPreco, linkDoWhatsapp } from '../../utils/formatos.js'
 import { instanteEmSaoPaulo, partesEmSaoPaulo } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 import { textoDoValor, tipoDoPrecoGuardado, valorDoAgendamento } from '../../utils/agenda.js'
@@ -101,27 +106,75 @@ function AgendarConfirmacao() {
   const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState('')
   const [avisoDeTroca, setAvisoDeTroca] = useState('')
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
+  const [tentativa, setTentativa] = useState(0)
+  const [passouDoLimite, setPassouDoLimite] = useState(false)
+  const [pixIndisponivel, setPixIndisponivel] = useState(false)
   const enviando = useRef(false)
 
   useEffect(() => {
-    async function carregar() {
+    async function montar() {
       const [fluxo, salao] = await Promise.all([carregarResumoDoFluxo(), buscarSalao()])
       const remarcacao = carregarRemarcacao()
       if (remarcacao) {
-        const [original] = await listarMeusAgendamentos([remarcacao.agendamentoId])
-        const cliente = original
-          ? { nome: original.cliente.nome, celular: original.cliente.telefone, observacao: original.observacoes || '' }
-          : null
+        const meus = await listarMeusAgendamentos([remarcacao.agendamentoId])
+        const original = meus.find((agendamento) => agendamento.id === remarcacao.agendamentoId)
+        const cliente =
+          original && original.cliente
+            ? { nome: original.cliente.nome, celular: original.cliente.telefone, observacao: original.observacoes || '' }
+            : null
         setDados({ ...fluxo, salao, cliente, remarcacao, original: original || null })
         return
       }
       setDados({ ...fluxo, salao, cliente: carregarDadosDoCliente(), remarcacao: null, original: null })
     }
+
+    async function carregar() {
+      try {
+        await montar()
+        setErroAoCarregar(null)
+      } catch (problema) {
+        setErroAoCarregar(codigoDoProblema(problema))
+      }
+    }
     carregar()
-  }, [])
+  }, [tentativa])
 
   function irParaOPasso2() {
     navegar('/agendar/horario', { state: { aviso: 'Esse horário acabou de ser ocupado. Escolha outro.' } })
+  }
+
+  function liberarBotao() {
+    setConfirmando(false)
+    enviando.current = false
+  }
+
+  function tratarFalha(codigo, remarcando) {
+    if (codigo === 'horario_ocupado') {
+      irParaOPasso2()
+      return
+    }
+    const destino = destinoDoErro(codigo, dados.nomeDoProfissional)
+    if (destino.para) {
+      if (destino.limparCardapio) limparCacheDaVitrine()
+      navegar(destino.para, { state: { aviso: destino.aviso } })
+      return
+    }
+    if (codigo === 'limite_de_agendamentos') {
+      setPassouDoLimite(true)
+      setErro(mensagemDoLimite)
+    } else if (codigo === 'forma_de_pagamento_invalida') {
+      setFormaPagamento('salao')
+      setPixIndisponivel(true)
+      setErro('O pagamento por Pix não está disponível agora. Ficou "Pagar no salão": confira e confirme de novo.')
+    } else if (codigo === 'fora_do_prazo') {
+      setErro('Já passou do prazo para remarcar pelo app. Fale com o salão.')
+    } else if (['sem_internet', 'servidor_indisponivel', 'muitas_tentativas'].includes(codigo)) {
+      setErro(mensagemDoErro(codigo))
+    } else {
+      setErro(remarcando ? 'Não conseguimos remarcar. Tente de novo.' : 'Não conseguimos salvar o agendamento. Tente de novo.')
+    }
+    liberarBotao()
   }
 
   async function confirmar() {
@@ -129,16 +182,25 @@ function AgendarConfirmacao() {
     enviando.current = true
     setConfirmando(true)
     setErro('')
+    setPassouDoLimite(false)
 
     const { resumo, horario, cliente, profissionalEscolhidoId, original } = dados
     const servicoIds = resumo.itens.map((item) => item.servico.id)
-    const livres = await listarHorariosLivres(
-      horario.data,
-      profissionalEscolhidoId,
-      resumo.duracaoTotal,
-      servicoIds,
-      original ? original.id : null,
-    )
+    let livres = []
+    try {
+      livres = await listarHorariosLivres(
+        horario.data,
+        profissionalEscolhidoId,
+        resumo.duracaoTotal,
+        servicoIds,
+        original ? original.id : null,
+        false,
+        itensParaOBanco(resumo),
+      )
+    } catch (problema) {
+      tratarFalha(codigoDoProblema(problema), Boolean(original))
+      return
+    }
     const vaga = livres.find((livre) => livre.minutos === horario.minutos)
     if (!vaga) {
       irParaOPasso2()
@@ -167,18 +229,8 @@ function AgendarConfirmacao() {
 
     if (original) {
       const remarcado = await remarcarAgendamento(original.id, vaga.profissionalId, inicio)
-      if (remarcado.erro === 'horario_ocupado') {
-        irParaOPasso2()
-        return
-      }
       if (remarcado.erro) {
-        setErro(
-          remarcado.erro === 'fora_do_prazo'
-            ? 'Já passou do prazo para remarcar pelo app. Fale com o salão.'
-            : 'Não conseguimos remarcar. Tente de novo.',
-        )
-        setConfirmando(false)
-        enviando.current = false
+        tratarFalha(remarcado.erro, true)
         return
       }
       terminar(remarcado.agendamento, true)
@@ -186,6 +238,7 @@ function AgendarConfirmacao() {
     }
 
     const resultado = await criarAgendamento({
+      origem: 'cliente',
       nome: cliente.nome,
       telefone: apenasDigitosDoCelular(cliente.celular),
       profissionalId: vaga.profissionalId,
@@ -200,19 +253,26 @@ function AgendarConfirmacao() {
       formaPagamento,
     })
 
-    if (resultado.erro === 'horario_ocupado') {
-      irParaOPasso2()
-      return
-    }
     if (resultado.erro) {
-      setErro('Não conseguimos salvar o agendamento. Tente de novo.')
-      setConfirmando(false)
-      enviando.current = false
+      tratarFalha(resultado.erro, false)
       return
     }
 
-    adicionarMeuAgendamento(resultado.agendamento.id)
+    if (!resultado.guardadoNoAparelho) adicionarMeuAgendamento(resultado.agendamento.id)
     terminar(resultado.agendamento, false)
+  }
+
+  function valorFinal(agendamento) {
+    const { resumo, original } = dados
+    if (original && original.profissional_id === agendamento.profissional_id) {
+      return textoDoValor(valorDoAgendamento(original))
+    }
+    const doBanco = agendamento.valor_total
+    if (resumo.temValor && typeof doBanco === 'number' && doBanco !== resumo.valorTotal) {
+      const valor = (resumo.aPartir ? 'a partir de ' : '') + formatarPreco(doBanco)
+      return resumo.aCombinar ? valor + ' + valor a combinar' : valor
+    }
+    return textoDoValorTotal(resumo)
   }
 
   function terminar(agendamento, remarcado) {
@@ -222,16 +282,25 @@ function AgendarConfirmacao() {
       fim: agendamento.fim,
       servicos: dados.resumo.itens.map((item) => item.nome),
       profissional: agendamento.profissional.nome,
-      valor:
-        dados.original && dados.original.profissional_id === agendamento.profissional_id
-          ? textoDoValor(valorDoAgendamento(dados.original))
-          : textoDoValorTotal(dados.resumo),
+      valor: valorFinal(agendamento),
       formaPagamento: agendamento.forma_pagamento,
       remarcado,
     })
     limparEscolha()
     encerrarRemarcacao()
     navegar('/agendar/sucesso', { replace: true })
+  }
+
+  if (erroAoCarregar) {
+    return (
+      <ErroAoCarregar
+        codigo={erroAoCarregar}
+        aoTentarDeNovo={() => {
+          setErroAoCarregar(null)
+          setTentativa(tentativa + 1)
+        }}
+      />
+    )
   }
 
   if (!dados) {
@@ -376,15 +445,21 @@ function AgendarConfirmacao() {
       </Bloco>
 
       <Bloco titulo="Seus dados" para={original ? null : '/agendar/dados'}>
-        <p>{cliente.nome}</p>
-        <p>{formatarCelular(cliente.celular)}</p>
-        {cliente.observacao && <p className="text-texto-suave">Observação: {cliente.observacao}</p>}
+        {cliente ? (
+          <>
+            <p>{cliente.nome}</p>
+            <p>{formatarCelular(cliente.celular)}</p>
+            {cliente.observacao && <p className="text-texto-suave">Observação: {cliente.observacao}</p>}
+          </>
+        ) : (
+          <p className="text-texto-suave">Seus dados continuam os mesmos do agendamento.</p>
+        )}
       </Bloco>
 
       {!original && (
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl font-semibold">Pagamento</h2>
-        {salao.pix_ativo ? (
+        {salao.pix_ativo && !pixIndisponivel ? (
           <fieldset className="flex flex-col gap-3">
             <legend className="sr-only">Como você quer pagar?</legend>
             <OpcaoDePagamento
@@ -427,6 +502,23 @@ function AgendarConfirmacao() {
           </p>
         )}
         {erro && <MensagemErro texto={erro} />}
+        {passouDoLimite && (
+          <div className="grid grid-cols-2 gap-2">
+            <Botao variante="secundario" para="/meus-agendamentos">
+              <CalendarDays className="size-5" aria-hidden="true" />
+              Horários
+            </Botao>
+            {salao.whatsapp && (
+              <Botao
+                variante="secundario"
+                linkExterno={linkDoWhatsapp(salao.whatsapp, 'Olá! Quero marcar mais um horário e o app diz que já tenho 3.')}
+              >
+                <MessageCircle className="size-5" aria-hidden="true" />
+                WhatsApp
+              </Botao>
+            )}
+          </div>
+        )}
         <Botao aoClicar={confirmar} carregando={confirmando} larguraTotal grande>
           {confirmando ? 'Confirmando...' : original ? 'Confirmar remarcação' : 'Confirmar agendamento'}
         </Botao>

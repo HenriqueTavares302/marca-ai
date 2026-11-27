@@ -15,7 +15,11 @@ function AgendarSucesso() {
 
   useEffect(() => {
     async function carregar() {
-      setSalao(await buscarSalao())
+      try {
+        setSalao(await buscarSalao())
+      } catch {
+        setSalao(null)
+      }
     }
     carregar()
   }, [])

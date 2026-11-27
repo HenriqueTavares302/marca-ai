@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, ShieldCheck, UserRound } from 'lucide-react'
+import AvisoDaVolta from '../../components/AvisoDaVolta.jsx'
 import Botao from '../../components/Botao.jsx'
 import CampoTexto from '../../components/CampoTexto.jsx'
 import Card from '../../components/Card.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import IndicadorDePassos from '../../components/IndicadorDePassos.jsx'
 import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
@@ -16,6 +18,7 @@ import {
   lembrarDados,
   salvarDadosDoCliente,
 } from '../../utils/agendamento.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { erroDoCelular, erroDoNome, formatarCelular } from '../../utils/cliente.js'
 import { carregarResumoDoFluxo } from '../../utils/fluxo.js'
 
@@ -23,6 +26,10 @@ const limiteDaObservacao = 200
 
 function AgendarDados() {
   const navegar = useNavigate()
+  const location = useLocation()
+  const avisoDaVolta = location.state && location.state.aviso ? location.state.aviso : ''
+  const [erro, setErro] = useState(null)
+  const [tentativa, setTentativa] = useState(0)
   const [fluxo, setFluxo] = useState(null)
   const [nome, setNome] = useState('')
   const [celular, setCelular] = useState('')
@@ -34,7 +41,14 @@ function AgendarDados() {
 
   useEffect(() => {
     async function carregar() {
-      const resumoDoFluxo = await carregarResumoDoFluxo()
+      let resumoDoFluxo = null
+      try {
+        resumoDoFluxo = await carregarResumoDoFluxo()
+      } catch (problema) {
+        setErro(codigoDoProblema(problema))
+        return
+      }
+      setErro(null)
       const daSessao = carregarDadosDoCliente()
       const lembrados = carregarDadosLembrados()
 
@@ -52,7 +66,7 @@ function AgendarDados() {
       setFluxo(resumoDoFluxo)
     }
     carregar()
-  }, [])
+  }, [tentativa])
 
   useEffect(() => {
     if (!fluxo) return
@@ -95,6 +109,18 @@ function AgendarDados() {
     document.getElementById('campo-nome').focus()
   }
 
+  if (erro) {
+    return (
+      <ErroAoCarregar
+        codigo={erro}
+        aoTentarDeNovo={() => {
+          setErro(null)
+          setTentativa(tentativa + 1)
+        }}
+      />
+    )
+  }
+
   if (!fluxo) {
     return (
       <>
@@ -131,6 +157,7 @@ function AgendarDados() {
   return (
     <>
       <IndicadorDePassos passo={3} />
+      <AvisoDaVolta texto={avisoDaVolta} />
       <ResumoDosServicos resumo={fluxo.resumo} nomeDoProfissional={fluxo.nomeDoProfissional} quando={fluxo.quando} />
 
       <section className="flex flex-col gap-4">

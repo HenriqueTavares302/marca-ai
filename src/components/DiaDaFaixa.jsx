@@ -2,12 +2,12 @@ import { Check } from 'lucide-react'
 import { formatarDataLonga, nomeCurtoDoDia, numeroDoDia } from '../utils/formatos.js'
 import { somarDias } from '../utils/fuso.js'
 
-function DiaDaFaixa({ data, hoje, aberto, selecionado, aoEscolher }) {
+function DiaDaFaixa({ data, hoje, aberto, lotado = false, selecionado, aoEscolher }) {
   let rotulo = nomeCurtoDoDia(data)
   if (data === hoje) rotulo = 'Hoje'
   if (data === somarDias(hoje, 1)) rotulo = 'Amanhã'
 
-  if (!aberto) {
+  if (!aberto || lotado) {
     return (
       <span
         id={'dia-' + data}
@@ -15,7 +15,7 @@ function DiaDaFaixa({ data, hoje, aberto, selecionado, aoEscolher }) {
       >
         <span>{rotulo}</span>
         <span className="text-lg font-semibold">{numeroDoDia(data)}</span>
-        <span>Fechado</span>
+        <span>{lotado ? 'Lotado' : 'Fechado'}</span>
       </span>
     )
   }

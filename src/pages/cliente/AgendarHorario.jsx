@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Info, RotateCcw } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import DiaDaFaixa from '../../components/DiaDaFaixa.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import FileiraRolavel from '../../components/FileiraRolavel.jsx'
 import GradeDeHorarios from '../../components/GradeDeHorarios.jsx'
@@ -13,16 +14,20 @@ import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
 import {
   listarDatasAbertas,
+  listarDiasLotados,
   listarHorariosLivres,
   listarProfissionaisComServicos,
   listarServicosComVariacoes,
 } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
+import { limparCacheDaVitrine } from '../../data/supabase/vitrine.js'
 import {
   carregarEscolha,
   carregarHorario,
   carregarRemarcacao,
   carregarProfissional,
   faixaDosProfissionais,
+  itensParaOBanco,
   profissionaisQueFazemTudo,
   resumirEscolha,
   salvarHorario,
@@ -32,6 +37,7 @@ import {
 } from '../../utils/agendamento.js'
 import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import { destinoDoErro } from '../../utils/errosDoAgendamento.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 import { mostrarHorarioEscolhido, rolarFaixaParaODia } from '../../utils/rolagem.js'
 
@@ -40,17 +46,27 @@ const quantidadeDeDias = 21
 async function buscarDiaComVaga(dias, aPartirDe, dados) {
   for (let indice = aPartirDe; indice < dias.length; indice++) {
     const data = dias[indice]
-    if (!dados.diasAbertos.includes(data)) continue
+    if (!dados.diasAbertos.includes(data) || dados.lotados.includes(data)) continue
     const livres = await listarHorariosLivres(
       data,
       dados.profissionalId,
       dados.duracao,
       dados.servicoIds,
       dados.ignorarAgendamentoId,
+      false,
+      dados.itens,
     )
     if (livres.length > 0) return data
   }
   return null
+}
+
+function mandarDeVolta(codigo, navegar) {
+  const destino = destinoDoErro(codigo)
+  if (!destino.para || destino.para === '/agendar/horario') return false
+  if (destino.limparCardapio) limparCacheDaVitrine()
+  navegar(destino.para, { state: { aviso: destino.aviso } })
+  return true
 }
 
 function AvisoDeRemarcacao({ inicioAnterior }) {
@@ -73,11 +89,26 @@ function AgendarHorario() {
   const [escolhido, setEscolhido] = useState(null)
   const [aviso, setAviso] = useState('')
   const [semVagaNaFaixa, setSemVagaNaFaixa] = useState(false)
+  const [erro, setErro] = useState(null)
+  const [tentativa, setTentativa] = useState(0)
+  const [erroDosHorarios, setErroDosHorarios] = useState(null)
+  const [tentativaDosHorarios, setTentativaDosHorarios] = useState(0)
   const location = useLocation()
+  const navegar = useNavigate()
   const avisoRecebido = useRef(location.state && location.state.aviso ? location.state.aviso : '')
 
   useEffect(() => {
     async function carregar() {
+      try {
+        await montar()
+        setErro(null)
+      } catch (problema) {
+        const codigo = codigoDoProblema(problema)
+        if (!mandarDeVolta(codigo, navegar)) setErro(codigo)
+      }
+    }
+
+    async function montar() {
       const [servicos, profissionais] = await Promise.all([listarServicosComVariacoes(), listarProfissionaisComServicos()])
       const resumo = resumirEscolha(carregarEscolha(), servicos)
       if (resumo.quantidade === 0) {
@@ -94,8 +125,13 @@ function AgendarHorario() {
       const dias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
       const profissionalId = profissional ? profissional.id : null
       const servicoIds = resumo.itens.map((item) => item.servico.id)
-      const diasAbertos = await listarDatasAbertas(profissionalId, servicoIds, dias)
+      const itens = itensParaOBanco(resumo)
       const remarcacao = carregarRemarcacao()
+      const ignorarAgendamentoId = remarcacao ? remarcacao.agendamentoId : null
+      const [diasAbertos, lotados] = await Promise.all([
+        listarDatasAbertas(profissionalId, servicoIds, dias, itens, ignorarAgendamentoId),
+        listarDiasLotados(profissionalId, itens, dias, ignorarAgendamentoId),
+      ])
       const novosDados = {
         resumo,
         escolha: carregarEscolha(),
@@ -105,12 +141,14 @@ function AgendarHorario() {
         possiveis,
         profissionalId,
         servicoIds,
+        itens,
         diasAbertos,
+        lotados,
         duracao: resumo.duracaoTotal,
         nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
         nomes: Object.fromEntries(profissionais.map((item) => [item.id, item.nome])),
         remarcacao,
-        ignorarAgendamentoId: remarcacao ? remarcacao.agendamentoId : null,
+        ignorarAgendamentoId,
       }
 
       let dataInicial = null
@@ -121,7 +159,9 @@ function AgendarHorario() {
           profissionalId,
           resumo.duracaoTotal,
           servicoIds,
-          novosDados.ignorarAgendamentoId,
+          ignorarAgendamentoId,
+          false,
+          itens,
         )
         const aindaLivre = dias.includes(salvo.data) && livres.find((horario) => horario.minutos === salvo.minutos)
         if (aindaLivre) {
@@ -153,28 +193,36 @@ function AgendarHorario() {
       setDataSelecionada(dataInicial)
     }
     carregar()
-  }, [])
+  }, [tentativa, navegar])
 
   useEffect(() => {
     if (!dados || !dataSelecionada || !dados.possiveis || dados.possiveis.length === 0) return
     let atual = true
     async function carregarHorarios() {
       setHorarios(null)
-      const livres = await listarHorariosLivres(
-        dataSelecionada,
-        dados.profissionalId,
-        dados.duracao,
-        dados.servicoIds,
-        dados.ignorarAgendamentoId,
-      )
-      if (atual) setHorarios(livres)
+      setErroDosHorarios(null)
+      try {
+        const livres = await listarHorariosLivres(
+          dataSelecionada,
+          dados.profissionalId,
+          dados.duracao,
+          dados.servicoIds,
+          dados.ignorarAgendamentoId,
+          false,
+          dados.itens,
+        )
+        if (atual) setHorarios(livres)
+      } catch (problema) {
+        const codigo = codigoDoProblema(problema)
+        if (atual && !mandarDeVolta(codigo, navegar)) setErroDosHorarios(codigo)
+      }
     }
     carregarHorarios()
     rolarFaixaParaODia(dataSelecionada)
     return () => {
       atual = false
     }
-  }, [dados, dataSelecionada])
+  }, [dados, dataSelecionada, tentativaDosHorarios, navegar])
 
   useEffect(() => {
     if (!escolhido) return
@@ -192,13 +240,32 @@ function AgendarHorario() {
 
   async function verProximoDiaComVaga() {
     const indice = dados.dias.indexOf(dataSelecionada)
-    const proximo = await buscarDiaComVaga(dados.dias, indice + 1, dados)
+    let proximo = null
+    try {
+      proximo = await buscarDiaComVaga(dados.dias, indice + 1, dados)
+    } catch (problema) {
+      const codigo = codigoDoProblema(problema)
+      if (!mandarDeVolta(codigo, navegar)) setErroDosHorarios(codigo)
+      return
+    }
     if (proximo) {
       setSemVagaNaFaixa(false)
       setDataSelecionada(proximo)
     } else {
       setSemVagaNaFaixa(true)
     }
+  }
+
+  if (erro) {
+    return (
+      <ErroAoCarregar
+        codigo={erro}
+        aoTentarDeNovo={() => {
+          setErro(null)
+          setTentativa(tentativa + 1)
+        }}
+      />
+    )
   }
 
   if (!dados) {
@@ -269,6 +336,7 @@ function AgendarHorario() {
                 data={data}
                 hoje={dados.hoje}
                 aberto={dados.diasAbertos.includes(data)}
+                lotado={dados.lotados.includes(data)}
                 selecionado={data === dataSelecionada}
                 aoEscolher={() => {
                   setSemVagaNaFaixa(false)
@@ -283,7 +351,14 @@ function AgendarHorario() {
       <section className="flex flex-col gap-4" aria-live="polite">
         <h2 className="text-2xl font-semibold">{formatarDataLonga(dataSelecionada)}</h2>
 
-        {horarios === null && <Esqueleto classes="h-32 w-full" />}
+        {erroDosHorarios && (
+          <ErroAoCarregar
+            codigo={erroDosHorarios}
+            aoTentarDeNovo={() => setTentativaDosHorarios(tentativaDosHorarios + 1)}
+          />
+        )}
+
+        {!erroDosHorarios && horarios === null && <Esqueleto classes="h-32 w-full" />}
 
         {horarios !== null && horarios.length === 0 && (
           <Card>
