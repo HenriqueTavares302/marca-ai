@@ -4,9 +4,11 @@ import { ArrowRight, CalendarCheck, CalendarPlus, Clock, Lock, MapPin, MessageCi
 import Botao from '../../components/Botao.jsx'
 import CapaDoSalao from '../../components/CapaDoSalao.jsx'
 import Card from '../../components/Card.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import PrecoDoServico from '../../components/PrecoDoServico.jsx'
 import { buscarSalao, listarHorarioDoSalao, listarServicosPopulares } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
 import { partesEmSaoPaulo } from '../../utils/fuso.js'
 import { precoParaMostrar } from '../../utils/precos.js'
@@ -28,6 +30,8 @@ function StatusDoSalao({ semana, agora }) {
 
 function Inicio() {
   const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [tentativa, setTentativa] = useState(0)
   const [salao, setSalao] = useState(null)
   const [semana, setSemana] = useState([])
   const [populares, setPopulares] = useState([])
@@ -35,18 +39,28 @@ function Inicio() {
 
   useEffect(() => {
     async function carregar() {
-      const [dadosDoSalao, horarios, servicos] = await Promise.all([
-        buscarSalao(),
-        listarHorarioDoSalao(),
-        listarServicosPopulares(4),
-      ])
-      setSalao(dadosDoSalao)
-      setSemana(horarios)
-      setPopulares(servicos)
+      try {
+        const [dadosDoSalao, horarios, servicos] = await Promise.all([
+          buscarSalao(),
+          listarHorarioDoSalao(),
+          listarServicosPopulares(4),
+        ])
+        setSalao(dadosDoSalao)
+        setSemana(horarios)
+        setPopulares(servicos)
+        setErro(null)
+      } catch (problema) {
+        setErro(codigoDoProblema(problema))
+      }
       setCarregando(false)
     }
     carregar()
-  }, [])
+  }, [tentativa])
+
+  function tentarDeNovo() {
+    setCarregando(true)
+    setTentativa(tentativa + 1)
+  }
 
   useEffect(() => {
     const relogio = setInterval(() => setAgora(new Date()), 60000)
@@ -54,6 +68,27 @@ function Inicio() {
   }, [])
 
   const diaDeHoje = partesEmSaoPaulo(agora).diaSemana
+
+  const rodape = (
+    <footer className="flex justify-center">
+      <Link
+        to={profissionalLogado() === null ? '/salao/entrar' : '/salao'}
+        className="flex min-h-12 items-center gap-2 px-4 text-texto-suave underline underline-offset-4"
+      >
+        <Lock className="size-4" aria-hidden="true" />
+        Entrar como profissional
+      </Link>
+    </footer>
+  )
+
+  if (erro) {
+    return (
+      <>
+        <ErroAoCarregar codigo={erro} aoTentarDeNovo={tentarDeNovo} tentando={carregando} />
+        {rodape}
+      </>
+    )
+  }
 
   return (
     <>
@@ -105,6 +140,9 @@ function Inicio() {
                     <PrecoDoServico {...precoParaMostrar(servico)} />
                   </li>
                 ))}
+            {!carregando && populares.length === 0 && (
+              <li className="py-3 text-texto-suave">O salão ainda não cadastrou serviços.</li>
+            )}
           </ul>
           <Link
             to="/servicos"
@@ -123,23 +161,29 @@ function Inicio() {
             <Esqueleto classes="h-12 w-full" />
           ) : (
             <>
-              <p className="flex items-start gap-2">
-                <MapPin className="mt-1 size-5 shrink-0 text-destaque" aria-hidden="true" />
-                {salao.endereco}
-              </p>
+              {salao.endereco && (
+                <p className="flex items-start gap-2">
+                  <MapPin className="mt-1 size-5 shrink-0 text-destaque" aria-hidden="true" />
+                  {salao.endereco}
+                </p>
+              )}
               <div className="mt-2 flex flex-col gap-3">
-                <Botao linkExterno={linkDoMapa(salao.endereco)} variante="secundario" larguraTotal>
-                  <MapPin className="size-5" aria-hidden="true" />
-                  Abrir no mapa
-                </Botao>
-                <Botao
-                  linkExterno={linkDoWhatsapp(salao.whatsapp, 'Olá! Vim pelo app do ' + salao.nome + '.')}
-                  variante="secundario"
-                  larguraTotal
-                >
-                  <MessageCircle className="size-5" aria-hidden="true" />
-                  Chamar no WhatsApp
-                </Botao>
+                {salao.endereco && (
+                  <Botao linkExterno={linkDoMapa(salao.endereco)} variante="secundario" larguraTotal>
+                    <MapPin className="size-5" aria-hidden="true" />
+                    Abrir no mapa
+                  </Botao>
+                )}
+                {salao.whatsapp && (
+                  <Botao
+                    linkExterno={linkDoWhatsapp(salao.whatsapp, 'Olá! Vim pelo app do ' + salao.nome + '.')}
+                    variante="secundario"
+                    larguraTotal
+                  >
+                    <MessageCircle className="size-5" aria-hidden="true" />
+                    Chamar no WhatsApp
+                  </Botao>
+                )}
               </div>
             </>
           )}
@@ -170,15 +214,7 @@ function Inicio() {
         </Card>
       </section>
 
-      <footer className="flex justify-center">
-        <Link
-          to={profissionalLogado() === null ? '/salao/entrar' : '/salao'}
-          className="flex min-h-12 items-center gap-2 px-4 text-texto-suave underline underline-offset-4"
-        >
-          <Lock className="size-4" aria-hidden="true" />
-          Entrar como profissional
-        </Link>
-      </footer>
+      {rodape}
     </>
   )
 }

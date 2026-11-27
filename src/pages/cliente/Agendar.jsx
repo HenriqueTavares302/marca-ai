@@ -3,12 +3,14 @@ import { ArrowRight, CircleAlert, Info } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import CardProfissional from '../../components/CardProfissional.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import IndicadorDePassos from '../../components/IndicadorDePassos.jsx'
 import ResumoDosServicos from '../../components/ResumoDosServicos.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
 import { listarCategorias, listarProfissionaisComServicos, listarServicosComVariacoes } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import {
   carregarEscolha,
   carregarProfissional,
@@ -34,14 +36,27 @@ function Agendar() {
   const [dados, setDados] = useState(null)
   const [profissionalId, setProfissionalId] = useState(null)
   const [avisoDeTroca, setAvisoDeTroca] = useState('')
+  const [erro, setErro] = useState(null)
+  const [tentando, setTentando] = useState(false)
+  const [tentativa, setTentativa] = useState(0)
 
   useEffect(() => {
     async function carregar() {
-      const [servicos, profissionais, categorias] = await Promise.all([
-        listarServicosComVariacoes(),
-        listarProfissionaisComServicos(),
-        listarCategorias(),
-      ])
+      let lidos
+      try {
+        lidos = await Promise.all([
+          listarServicosComVariacoes(),
+          listarProfissionaisComServicos(),
+          listarCategorias(),
+        ])
+      } catch (problema) {
+        setErro(codigoDoProblema(problema))
+        setTentando(false)
+        return
+      }
+      setErro(null)
+      setTentando(false)
+      const [servicos, profissionais, categorias] = lidos
       const resumo = resumirEscolha(carregarEscolha(), servicos)
       const possiveis = profissionaisQueFazemTudo(profissionais, resumo.itens)
       const salvo = carregarProfissional()
@@ -63,11 +78,20 @@ function Agendar() {
       setDados({ servicos, profissionais, categorias, resumo, possiveis, escolha: carregarEscolha() })
     }
     carregar()
-  }, [])
+  }, [tentativa])
+
+  function tentarDeNovo() {
+    setTentando(true)
+    setTentativa(tentativa + 1)
+  }
 
   function escolher(id) {
     setProfissionalId(id)
     salvarProfissional(id)
+  }
+
+  if (erro) {
+    return <ErroAoCarregar codigo={erro} aoTentarDeNovo={tentarDeNovo} tentando={tentando} />
   }
 
   if (!dados) {

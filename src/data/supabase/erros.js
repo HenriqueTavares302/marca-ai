@@ -65,3 +65,14 @@ export function traduzirErro(problema, online = navegadorOnline()) {
 export function mensagemDoErro(codigo) {
   return mensagens[codigo] || mensagens.erro_inesperado
 }
+
+export class ErroDosDados extends Error {
+  constructor(codigo) {
+    super(codigo)
+    this.codigo = codigo
+  }
+}
+
+export function codigoDoProblema(problema) {
+  return problema && typeof problema.codigo === 'string' ? problema.codigo : 'erro_inesperado'
+}

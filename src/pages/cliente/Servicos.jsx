@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import CardServico from '../../components/CardServico.jsx'
 import Card from '../../components/Card.jsx'
 import Chip from '../../components/Chip.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import FileiraRolavel from '../../components/FileiraRolavel.jsx'
 import PainelDeTamanho from '../../components/PainelDeTamanho.jsx'
 import ResumoDaEscolha from '../../components/ResumoDaEscolha.jsx'
 import { listarCategorias, listarServicosComVariacoes } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { carregarEscolha, encerrarRemarcacao, resumirEscolha, salvarEscolha } from '../../utils/agendamento.js'
 
 const todas = 'Todos'
@@ -26,6 +28,8 @@ function CardCarregando() {
 
 function Servicos() {
   const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [tentativa, setTentativa] = useState(0)
   const [servicos, setServicos] = useState([])
   const [categorias, setCategorias] = useState([])
   const [categoriaAtual, setCategoriaAtual] = useState(todas)
@@ -34,13 +38,23 @@ function Servicos() {
 
   useEffect(() => {
     async function carregar() {
-      const [lista, nomesDasCategorias] = await Promise.all([listarServicosComVariacoes(), listarCategorias()])
-      setServicos(lista)
-      setCategorias(nomesDasCategorias)
+      try {
+        const [lista, nomesDasCategorias] = await Promise.all([listarServicosComVariacoes(), listarCategorias()])
+        setServicos(lista)
+        setCategorias(nomesDasCategorias)
+        setErro(null)
+      } catch (problema) {
+        setErro(codigoDoProblema(problema))
+      }
       setCarregando(false)
     }
     carregar()
-  }, [])
+  }, [tentativa])
+
+  function tentarDeNovo() {
+    setCarregando(true)
+    setTentativa(tentativa + 1)
+  }
 
   useEffect(() => {
     encerrarRemarcacao()
@@ -97,6 +111,10 @@ function Servicos() {
 
   const itemDoPainel = servicoDoPainel ? itemEscolhidoDe(servicoDoPainel) : null
 
+  if (erro) {
+    return <ErroAoCarregar codigo={erro} aoTentarDeNovo={tentarDeNovo} tentando={carregando} />
+  }
+
   return (
     <>
       <p className="text-texto-suave">Toque nos serviços que você quer. Depois é só continuar.</p>
@@ -126,6 +144,10 @@ function Servicos() {
           <CardCarregando />
           <CardCarregando />
         </div>
+      ) : servicos.length === 0 ? (
+        <Card>
+          <p className="text-texto-suave">O salão ainda não cadastrou serviços. Volte mais tarde ou chame o salão no WhatsApp.</p>
+        </Card>
       ) : (
         grupos.map((grupo) => (
           <section key={grupo.categoria} className="flex flex-col gap-3">

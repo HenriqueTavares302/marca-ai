@@ -10,7 +10,11 @@ function TelaDeAcesso({ titulo, voltarPara, textoDoVoltar, children }) {
   useEffect(() => {
     document.title = titulo + ' · Marca Aí'
     async function carregar() {
-      setSalao(await buscarSalao())
+      try {
+        setSalao(await buscarSalao())
+      } catch {
+        setSalao(null)
+      }
     }
     carregar()
   }, [titulo])

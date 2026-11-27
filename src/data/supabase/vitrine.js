@@ -4,10 +4,9 @@ import { traduzirVitrine } from './traducoes.js'
 
 const validadeEmMs = 60000
 let guardada = null
+let emAndamento = null
 
-export async function buscarVitrine() {
-  if (guardada && Date.now() - guardada.em < validadeEmMs) return { dados: guardada.vitrine }
-
+async function pedirAoBanco() {
   const slug = slugDoSalao()
   if (!slug) return { erro: 'sem_configuracao' }
 
@@ -18,6 +17,16 @@ export async function buscarVitrine() {
   if (!vitrine) return { erro: 'erro_inesperado' }
   guardada = { vitrine, em: Date.now() }
   return { dados: vitrine }
+}
+
+export async function buscarVitrine() {
+  if (guardada && Date.now() - guardada.em < validadeEmMs) return { dados: guardada.vitrine }
+  if (!emAndamento) {
+    emAndamento = pedirAoBanco().finally(() => {
+      emAndamento = null
+    })
+  }
+  return emAndamento
 }
 
 export function limparCacheDaVitrine() {
