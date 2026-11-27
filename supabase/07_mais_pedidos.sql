@@ -90,7 +90,6 @@ begin
           where i.salao_id = v_salao.id
             and a.status <> 'cancelado'
             and a.inicio >= now() - interval '90 days'
-            and a.inicio < now()
           group by i.servico_id
         ) c on c.servico_id = s.id
         where s.salao_id = v_salao.id and s.ativo

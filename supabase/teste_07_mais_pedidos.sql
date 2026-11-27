@@ -128,8 +128,8 @@ select pg_temp.pedido(12, -2);
 select pg_temp.pedido(1, -3, 'cancelado'), pg_temp.pedido(1, -4, 'cancelado'), pg_temp.pedido(1, -7, 'cancelado'),
   pg_temp.pedido(1, -8, 'cancelado'), pg_temp.pedido(1, -9, 'cancelado');
 select pg_temp.pedido(2, -100), pg_temp.pedido(2, -120), pg_temp.pedido(2, -150), pg_temp.pedido(2, -200);
-select pg_temp.pedido(3, 5, 'agendado'), pg_temp.pedido(3, 6, 'agendado'), pg_temp.pedido(3, 7, 'agendado'),
-  pg_temp.pedido(3, 8, 'agendado');
+select pg_temp.pedido(10, 5, 'cancelado'), pg_temp.pedido(10, 6, 'cancelado'), pg_temp.pedido(10, 7, 'cancelado'),
+  pg_temp.pedido(10, 8, 'cancelado');
 
 select pg_temp.confere('mais agendados primeiro (8, 5, 12) e completa pela ordem do cardápio',
   pg_temp.mais_pedidos() = '[8, 5, 12]'::jsonb || pg_temp.pela_ordem(1, '{8,5,12}'), pg_temp.mais_pedidos()::text);
@@ -137,8 +137,18 @@ select pg_temp.confere('cancelados não contam (5 cancelados do serviço 1 não 
   not (pg_temp.mais_pedidos() -> 0 = '1' or pg_temp.mais_pedidos() -> 1 = '1' or pg_temp.mais_pedidos() -> 2 = '1'), pg_temp.mais_pedidos()::text);
 select pg_temp.confere('agendamentos com mais de 90 dias não contam (serviço 2)',
   not (pg_temp.mais_pedidos() -> 0 = '2' or pg_temp.mais_pedidos() -> 1 = '2' or pg_temp.mais_pedidos() -> 2 = '2'), pg_temp.mais_pedidos()::text);
-select pg_temp.confere('agendamentos futuros ainda não contam (serviço 3)',
-  not (pg_temp.mais_pedidos() -> 0 = '3' or pg_temp.mais_pedidos() -> 1 = '3' or pg_temp.mais_pedidos() -> 2 = '3'), pg_temp.mais_pedidos()::text);
+select pg_temp.confere('futuros cancelados não contam (serviço 10)',
+  not (pg_temp.mais_pedidos() -> 0 = '10' or pg_temp.mais_pedidos() -> 1 = '10' or pg_temp.mais_pedidos() -> 2 = '10'), pg_temp.mais_pedidos()::text);
+
+select pg_temp.pedido(3, 5, 'agendado'), pg_temp.pedido(3, 6, 'agendado'), pg_temp.pedido(3, 7, 'agendado'),
+  pg_temp.pedido(3, 30, 'agendado');
+select pg_temp.confere('agendamentos já marcados para a frente contam (serviço 3 com 4 vai para o topo)',
+  pg_temp.mais_pedidos() = '[3, 8, 5, 12]'::jsonb, pg_temp.mais_pedidos()::text);
+select pg_temp.pedido(12, 200, 'agendado'), pg_temp.pedido(12, 201, 'agendado');
+select pg_temp.confere('marcado bem longe para a frente também conta (serviço 12 passa o 5)',
+  pg_temp.mais_pedidos() = '[3, 8, 12, 5]'::jsonb, pg_temp.mais_pedidos()::text);
+update public.agendamentos set status = 'cancelado'
+where id in (select agendamento_id from public.agendamento_servicos where servico_id in (3, 12)) and inicio > now();
 
 select pg_temp.pedido(1, -1), pg_temp.pedido(1, -2);
 select pg_temp.confere('empate (5 e 1 com 2 cada) segue a ordem do cardápio',
