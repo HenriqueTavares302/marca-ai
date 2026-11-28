@@ -177,6 +177,47 @@ select pg_temp.recusa('profissional não muda preço direto na tabela (RLS)', 'a
   $c$with x as (update public.servicos set preco = 1 where id = 2 returning 1) select case when count(*) = 0 then 1 / 0 else 1 end from x$c$);
 select pg_temp.recusa('visitante não chama salvar_servico', 'anon', null,
   $c$select public.salvar_servico('{}'::jsonb)$c$, 'permission denied');
+select pg_temp.recusa('nome do serviço só com espaços é recusado', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select public.salvar_servico('{"nome":"   ","categoria":"Corte","descricao":"","tipo_preco":"fixo","preco":30,"duracao_min":30,"variacoes":[],"profissional_ids":[1]}'::jsonb)$c$,
+  'servico_invalido');
+select pg_temp.recusa('nome da categoria só com espaços é recusado', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select public.salvar_servico('{"nome":"Teste vazio","categoria":" \t ","descricao":"","tipo_preco":"fixo","preco":30,"duracao_min":30,"variacoes":[],"profissional_ids":[1]}'::jsonb)$c$,
+  'servico_invalido');
+select pg_temp.recusa('nome de tamanho só com espaços é recusado', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select public.salvar_servico('{"nome":"Teste vazio","categoria":"Corte","descricao":"","variacoes":[{"nome":"Curto","preco":50,"duracao_min":30},{"nome":" \t ","preco":60,"duracao_min":40}],"profissional_ids":[1]}'::jsonb)$c$,
+  'servico_invalido');
+select pg_temp.confere('... e nenhum dos três gravou nada',
+  (select count(*) from public.servicos) = pg_temp.lido('servicos_antes')::int
+  and not exists (select 1 from public.servicos where nome = 'Teste vazio'));
+
+select pg_temp.guarde('dois', pg_temp.aceita('dono cria serviço com 2 tamanhos (P e G)', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select public.salvar_servico('{"nome":"Escova teste","categoria":"Tamanhos","descricao":"","variacoes":[{"nome":"P","preco":40,"duracao_min":30},{"nome":"G","preco":60,"duracao_min":50}],"profissional_ids":[1]}'::jsonb)$c$));
+select pg_temp.guarde('p', to_jsonb((select v.id from public.servico_variacoes v where v.servico_id = pg_temp.lido('dois')::bigint and v.nome = 'P')));
+select pg_temp.guarde('g', to_jsonb((select v.id from public.servico_variacoes v where v.servico_id = pg_temp.lido('dois')::bigint and v.nome = 'G')));
+select pg_temp.aceita('salvo de novo com a ordem dos tamanhos invertida', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  format($c$select public.salvar_servico('{"id":%s,"nome":"Escova teste","categoria":"Tamanhos","descricao":"","variacoes":[{"id":%s,"nome":"G","preco":60,"duracao_min":50},{"id":%s,"nome":"P","preco":40,"duracao_min":30}],"profissional_ids":[1]}'::jsonb)$c$,
+    pg_temp.lido('dois'), pg_temp.lido('g'), pg_temp.lido('p')));
+select pg_temp.confere('ordem nova gravada (G, P), com os mesmos tamanhos e sem criar outros',
+  (select string_agg(v.id || ':' || v.nome || ':' || v.ordem, ',' order by v.ordem) from public.servico_variacoes v where v.servico_id = pg_temp.lido('dois')::bigint)
+  = pg_temp.lido('g') || ':G:1,' || pg_temp.lido('p') || ':P:2');
+
+select pg_temp.guarde('tres', pg_temp.aceita('dono cria serviço com 3 tamanhos', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select public.salvar_servico('{"nome":"Hidratação teste","categoria":"Tamanhos","descricao":"","variacoes":[{"nome":"Curto","preco":50,"duracao_min":30},{"nome":"Médio","preco":70,"duracao_min":45},{"nome":"Longo","preco":90,"duracao_min":60}],"profissional_ids":[1]}'::jsonb)$c$));
+select pg_temp.guarde('t_curto', to_jsonb((select v.id from public.servico_variacoes v where v.servico_id = pg_temp.lido('tres')::bigint and v.nome = 'Curto')));
+select pg_temp.guarde('t_medio', to_jsonb((select v.id from public.servico_variacoes v where v.servico_id = pg_temp.lido('tres')::bigint and v.nome = 'Médio')));
+select pg_temp.guarde('t_longo', to_jsonb((select v.id from public.servico_variacoes v where v.servico_id = pg_temp.lido('tres')::bigint and v.nome = 'Longo')));
+insert into public.agendamentos (salao_id, cliente_id, profissional_id, inicio, fim, status)
+values ('00000000-0000-4000-8000-000000000001', 4, 1, pg_temp.momento(7, '15:00'), pg_temp.momento(7, '15:45'), 'agendado');
+insert into public.agendamento_servicos (salao_id, agendamento_id, servico_id, variacao_id, preco, duracao_min)
+select '00000000-0000-4000-8000-000000000001', max(a.id), pg_temp.lido('tres')::bigint, pg_temp.lido('t_medio')::bigint, 70, 45
+from public.agendamentos a;
+select pg_temp.aceita('salvo sem o tamanho do meio, que já foi usado (sem servico_repetido)', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  format($c$select public.salvar_servico('{"id":%s,"nome":"Hidratação teste","categoria":"Tamanhos","descricao":"","variacoes":[{"id":%s,"nome":"Curto","preco":50,"duracao_min":30},{"id":%s,"nome":"Longo","preco":90,"duracao_min":60}],"profissional_ids":[1]}'::jsonb)$c$,
+    pg_temp.lido('tres'), pg_temp.lido('t_curto'), pg_temp.lido('t_longo')));
+select pg_temp.confere('o do meio fica inativo; Curto e Longo ativos e em ordem (1 e 2)',
+  exists (select 1 from public.servico_variacoes v where v.id = pg_temp.lido('t_medio')::bigint and not v.ativa)
+  and (select string_agg(v.nome || ':' || v.ordem, ',' order by v.ordem) from public.servico_variacoes v
+       where v.servico_id = pg_temp.lido('tres')::bigint and v.ativa) = 'Curto:1,Longo:2');
 
 select pg_temp.guarde('sem_uso', pg_temp.aceita('dono cria serviço sem uso numa categoria nova', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
   $c$select public.salvar_servico('{"nome":"Sobrancelha","categoria":"Rosto","descricao":"","tipo_preco":"consulta","preco":50,"duracao_min":20,"variacoes":[],
@@ -222,12 +263,34 @@ select pg_temp.confere('... sem apagar os horários que já existiam',
 select pg_temp.recusa('início depois do fim é recusado', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
   $c$select 1 from public.salvar_horarios_do_profissional(2, '[{"dia_semana":3,"inicio":"15:00:00","fim":"12:00:00"}]'::jsonb)$c$,
   'horario_invalido');
+select pg_temp.recusa('linha sem dia_semana é recusada', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select 1 from public.salvar_horarios_do_profissional(2, '[{"inicio":"08:00:00","fim":"12:00:00"}]'::jsonb)$c$,
+  'horario_invalido');
+select pg_temp.recusa('linha sem fim é recusada', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
+  $c$select 1 from public.salvar_horarios_do_profissional(2, '[{"dia_semana":3,"inicio":"08:00:00"},{"dia_semana":5,"inicio":"08:00:00","fim":"12:00:00"}]'::jsonb)$c$,
+  'horario_invalido');
+select pg_temp.confere('... e os horários antigos da Ana continuam lá',
+  (select string_agg(dia_semana || ' ' || inicio || '-' || fim, ',' order by inicio) from public.horarios_trabalho where profissional_id = 2)
+  = '2 08:00:00-12:00:00,2 13:00:00-18:00:00');
 select pg_temp.recusa('profissional inativo (Carla) é recusado', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
   $c$select 1 from public.salvar_horarios_do_profissional(3, '[]'::jsonb)$c$, 'nao_encontrado');
 select pg_temp.aceita('dono salva os horários da Ana', 'authenticated', 'a0000000-0000-4000-8000-000000000001',
   $c$select 1 from public.salvar_horarios_do_profissional(2, '[{"dia_semana":4,"inicio":"09:00:00","fim":"19:00:00"}]'::jsonb)$c$);
 select pg_temp.recusa('visitante não chama salvar_horarios_do_profissional', 'anon', null,
   $c$select 1 from public.salvar_horarios_do_profissional(2, '[]'::jsonb)$c$, 'permission denied');
+select pg_temp.recusa('visitante não chama apagar_servico', 'anon', null,
+  $c$select 1 from public.apagar_servico(1)$c$, 'permission denied');
+select pg_temp.recusa('visitante não chama trocar_ordem_servico', 'anon', null,
+  $c$select public.trocar_ordem_servico(1, 'subir')$c$, 'permission denied');
+select pg_temp.confere('anon sem execute nas 4 funções; authenticated com execute nas 4',
+  not has_function_privilege('anon', 'public.salvar_servico(jsonb)', 'execute')
+  and not has_function_privilege('anon', 'public.apagar_servico(bigint)', 'execute')
+  and not has_function_privilege('anon', 'public.trocar_ordem_servico(bigint, text)', 'execute')
+  and not has_function_privilege('anon', 'public.salvar_horarios_do_profissional(bigint, jsonb)', 'execute')
+  and has_function_privilege('authenticated', 'public.salvar_servico(jsonb)', 'execute')
+  and has_function_privilege('authenticated', 'public.apagar_servico(bigint)', 'execute')
+  and has_function_privilege('authenticated', 'public.trocar_ordem_servico(bigint, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.salvar_horarios_do_profissional(bigint, jsonb)', 'execute'));
 
 select pg_temp.confere('as 4 funções são security invoker (o RLS de quem chama vale) com search_path vazio',
   (select bool_and(not p.prosecdef and p.proconfig = array['search_path=""'])

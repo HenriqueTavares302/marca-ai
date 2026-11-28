@@ -3,8 +3,8 @@ language plpgsql security invoker set search_path = '' as $$
 declare
   v_salao_id uuid := privado.meu_salao();
   v_id bigint := nullif(p_dados ->> 'id', '')::bigint;
-  v_nome text := regexp_replace(btrim(coalesce(p_dados ->> 'nome', '')), '\s+', ' ', 'g');
-  v_nome_categoria text := regexp_replace(btrim(coalesce(p_dados ->> 'categoria', '')), '\s+', ' ', 'g');
+  v_nome text := btrim(regexp_replace(coalesce(p_dados ->> 'nome', ''), '\s+', ' ', 'g'));
+  v_nome_categoria text := btrim(regexp_replace(coalesce(p_dados ->> 'categoria', ''), '\s+', ' ', 'g'));
   v_descricao text := nullif(btrim(coalesce(p_dados ->> 'descricao', '')), '');
   v_variacoes jsonb := coalesce(p_dados -> 'variacoes', '[]'::jsonb);
   v_profissionais bigint[];
@@ -25,6 +25,12 @@ begin
     raise exception 'sem_permissao';
   end if;
   if jsonb_typeof(v_variacoes) <> 'array' or jsonb_array_length(v_variacoes) > 10 then
+    raise exception 'servico_invalido';
+  end if;
+  if v_nome = '' or v_nome_categoria = '' or exists (
+    select 1 from jsonb_array_elements(v_variacoes) e
+    where btrim(regexp_replace(coalesce(e.value ->> 'nome', ''), '\s+', ' ', 'g')) = ''
+  ) then
     raise exception 'servico_invalido';
   end if;
 
@@ -93,7 +99,7 @@ begin
     v_variacao_id := nullif(v_variacao ->> 'id', '')::bigint;
     if v_variacao_id is not null then
       update public.servico_variacoes v
-      set nome = regexp_replace(btrim(v_variacao ->> 'nome'), '\s+', ' ', 'g'),
+      set nome = btrim(regexp_replace(v_variacao ->> 'nome', '\s+', ' ', 'g')),
           preco = (v_variacao ->> 'preco')::numeric,
           duracao_min = (v_variacao ->> 'duracao_min')::integer,
           ordem = v_indice,
@@ -106,7 +112,7 @@ begin
     if v_variacao_id is null then
       insert into public.servico_variacoes (salao_id, servico_id, nome, preco, duracao_min, ordem)
       values (
-        v_salao_id, v_id, regexp_replace(btrim(v_variacao ->> 'nome'), '\s+', ' ', 'g'),
+        v_salao_id, v_id, btrim(regexp_replace(v_variacao ->> 'nome', '\s+', ' ', 'g')),
         (v_variacao ->> 'preco')::numeric, (v_variacao ->> 'duracao_min')::integer, v_indice
       )
       returning id into v_variacao_id;
@@ -268,7 +274,8 @@ begin
   end if;
   if exists (
     select 1 from jsonb_array_elements(p_linhas) e
-    where (e.value ->> 'dia_semana')::integer not between 0 and 6
+    where e.value ->> 'dia_semana' is null or e.value ->> 'inicio' is null or e.value ->> 'fim' is null
+      or (e.value ->> 'dia_semana')::integer not between 0 and 6
       or (e.value ->> 'inicio')::time >= (e.value ->> 'fim')::time
   ) then
     raise exception 'horario_invalido';
@@ -284,7 +291,7 @@ begin
 exception
   when exclusion_violation then
     raise exception 'horarios_sobrepostos';
-  when invalid_text_representation or invalid_datetime_format or datetime_field_overflow then
+  when not_null_violation or check_violation or invalid_text_representation or invalid_datetime_format or datetime_field_overflow then
     raise exception 'horario_invalido';
 end;
 $$;
