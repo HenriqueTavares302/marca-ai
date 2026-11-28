@@ -3,6 +3,7 @@ import { useBlocker, useNavigate } from 'react-router-dom'
 import { CalendarOff } from 'lucide-react'
 import AgendamentosAfetados from '../../components/AgendamentosAfetados.jsx'
 import Botao from '../../components/Botao.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import CampoTexto from '../../components/CampoTexto.jsx'
 import Chip from '../../components/Chip.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
@@ -10,6 +11,7 @@ import MensagemErro from '../../components/MensagemErro.jsx'
 import OpcaoDeEscolha from '../../components/OpcaoDeEscolha.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import { conflitosDoBloqueio, criarBloqueio, listarProfissionaisAtivos } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import {
   diasEntre,
   errosDoBloqueio,
@@ -19,7 +21,7 @@ import {
 } from '../../utils/expediente.js'
 import { formatarDataCurta } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo } from '../../utils/fuso.js'
-import { profissionalLogado } from '../../utils/sessao.js'
+import { mostrarEscolhaDeProfissional, papelLogado, profissionalLogado } from '../../utils/sessao.js'
 
 function formularioInicial(profissionalId, hoje) {
   return {
@@ -35,6 +37,7 @@ function formularioInicial(profissionalId, hoje) {
 }
 
 function NovoBloqueio() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const navegar = useNavigate()
   const idLogado = profissionalLogado()
   const [hoje] = useState(hojeEmSaoPaulo)
@@ -52,7 +55,7 @@ function NovoBloqueio() {
     async function carregar() {
       setProfissionais(await listarProfissionaisAtivos())
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [])
 
   const sujo = JSON.stringify(formulario) !== inicial
@@ -164,25 +167,31 @@ function NovoBloqueio() {
     criar()
   }
 
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
+  }
+
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <p className="font-medium" id="rotulo-profissional-bloqueio">
-          Profissional
-        </p>
-        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="rotulo-profissional-bloqueio">
-          {profissionais.map((item) => (
-            <Chip
-              key={item.id}
-              selecionado={item.id === formulario.profissionalId}
-              aoClicar={() => mudar('profissionalId', item.id)}
-            >
-              {item.nome.split(' ')[0]}
-              {item.id === idLogado ? ' (você)' : ''}
-            </Chip>
-          ))}
+      {mostrarEscolhaDeProfissional(papelLogado(), profissionais.length) && (
+        <div className="flex flex-col gap-2">
+          <p className="font-medium" id="rotulo-profissional-bloqueio">
+            Profissional
+          </p>
+          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="rotulo-profissional-bloqueio">
+            {profissionais.map((item) => (
+              <Chip
+                key={item.id}
+                selecionado={item.id === formulario.profissionalId}
+                aoClicar={() => mudar('profissionalId', item.id)}
+              >
+                {item.nome.split(' ')[0]}
+                {item.id === idLogado ? ' (você)' : ''}
+              </Chip>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <fieldset className="flex flex-col">
         <legend className="mb-1 font-medium">Tipo</legend>

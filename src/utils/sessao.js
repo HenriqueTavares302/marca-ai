@@ -240,3 +240,7 @@ export function caminhoDeVoltaSeguro(caminho) {
     !caminho.includes('//')
   return valido ? caminho : '/salao'
 }
+
+export function mostrarEscolhaDeProfissional(papel, quantidadeDeAtivos) {
+  return papel === 'dono' && quantidadeDeAtivos > 1
+}

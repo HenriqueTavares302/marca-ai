@@ -7,6 +7,7 @@ import Card from '../../components/Card.jsx'
 import CardServico from '../../components/CardServico.jsx'
 import Chip from '../../components/Chip.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import MensagemErro from '../../components/MensagemErro.jsx'
 import OpcaoDeEscolha from '../../components/OpcaoDeEscolha.jsx'
@@ -18,6 +19,7 @@ import {
   listarServicosDoSalao,
   salvarServico,
 } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { formatarDuracao, formatarPreco } from '../../utils/formatos.js'
 import {
   duracoesRapidas,
@@ -30,7 +32,7 @@ import {
   temErros,
   textoDoPreco,
 } from '../../utils/servico.js'
-import { profissionalLogado } from '../../utils/sessao.js'
+import { papelLogado, profissionalLogado } from '../../utils/sessao.js'
 
 const tiposDePreco = [
   { valor: 'fixo', titulo: 'Fixo', explicacao: 'O cliente vê o valor exato.' },
@@ -178,6 +180,7 @@ function Secao({ id, titulo, children }) {
 }
 
 function FormularioDeServico() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const navegar = useNavigate()
   const params = useParams()
   const idDaRota = params.id ? Number(params.id) : null
@@ -209,7 +212,7 @@ function FormularioDeServico() {
       setFormulario(comeco)
       setInicial(JSON.stringify(comeco))
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [editando, idDaRota, idLogado])
 
   const sujo = Boolean(formulario) && JSON.stringify(formulario) !== inicial
@@ -228,6 +231,21 @@ function FormularioDeServico() {
     window.addEventListener('beforeunload', avisarAntesDeSair)
     return () => window.removeEventListener('beforeunload', avisarAntesDeSair)
   }, [sujo])
+
+  if (papelLogado() !== 'dono') {
+    return (
+      <Card>
+        <p className="font-semibold">Só o dono altera o catálogo e os preços.</p>
+        <Botao para="/salao/servicos" variante="secundario">
+          Ver serviços
+        </Botao>
+      </Card>
+    )
+  }
+
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
+  }
 
   if (!base) {
     return (

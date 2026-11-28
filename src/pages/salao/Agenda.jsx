@@ -15,14 +15,16 @@ import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import Chip from '../../components/Chip.jsx'
 import ChipDeStatus from '../../components/ChipDeStatus.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import PainelDoAtendimento from '../../components/PainelDoAtendimento.jsx'
-import { buscarSalao, listarAgendaDoDia } from '../../data/consultas.js'
+import { buscarSalao, listarAgendaDoDia, listarProfissionaisAtivos } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { montarLinhaDoTempo, resumirDia, textoDoValor, valorDoAgendamento } from '../../utils/agenda.js'
 import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
-import { profissionalLogado } from '../../utils/sessao.js'
+import { mostrarEscolhaDeProfissional, papelLogado, profissionalLogado } from '../../utils/sessao.js'
 
 function plural(quantidade, singular, pluralDaPalavra) {
   return quantidade + ' ' + (quantidade === 1 ? singular : pluralDaPalavra)
@@ -127,6 +129,8 @@ function Agenda() {
   const [soEu, setSoEu] = useState(() => !(location.state && location.state.todos))
   const [versao, setVersao] = useState(0)
   const [dados, setDados] = useState(null)
+  const [ativos, setAtivos] = useState(null)
+  const [erro, setErro] = useState(null)
   const [abertoId, setAbertoId] = useState(null)
   const [aviso, setAviso] = useState(() =>
     location.state && typeof location.state.aviso === 'string'
@@ -139,13 +143,32 @@ function Agenda() {
   const agoraEmSaoPaulo = partesEmSaoPaulo(agora)
   const hoje = agoraEmSaoPaulo.data
   const ehHoje = data === hoje
-  const filtro = soEu ? idLogado : null
+  const podeVerTodos = papelLogado() === 'dono' && (ativos === null || mostrarEscolhaDeProfissional('dono', ativos.length))
+  const filtro = soEu || !podeVerTodos ? idLogado : null
+
+  useEffect(() => {
+    async function carregarAtivos() {
+      try {
+        setAtivos(await listarProfissionaisAtivos())
+      } catch {
+        setAtivos([])
+      }
+    }
+    carregarAtivos()
+  }, [])
 
   useEffect(() => {
     let atual = true
     async function carregar() {
-      const [dia, salao] = await Promise.all([listarAgendaDoDia(data, filtro), buscarSalao()])
-      if (atual) setDados({ ...dia, salao, data, filtro })
+      try {
+        const [dia, salao] = await Promise.all([listarAgendaDoDia(data, filtro), buscarSalao()])
+        if (atual) {
+          setDados({ ...dia, salao, data, filtro })
+          setErro(null)
+        }
+      } catch (problema) {
+        if (atual) setErro(codigoDoProblema(problema))
+      }
     }
     carregar()
     return () => {
@@ -213,6 +236,18 @@ function Agenda() {
   const nomes = carregado ? Object.fromEntries(dados.profissionais.map((item) => [item.id, primeiroNome(item.nome)])) : {}
   const aberto = carregado ? dados.agendamentos.find((agendamento) => agendamento.id === abertoId) || null : null
 
+  if (erro) {
+    return (
+      <ErroAoCarregar
+        codigo={erro}
+        aoTentarDeNovo={() => {
+          setErro(null)
+          setVersao((atual) => atual + 1)
+        }}
+      />
+    )
+  }
+
   return (
     <>
       <div className="sticky top-16 z-[5] -mx-4 -mt-4 border-b border-borda bg-fundo px-4 py-2">
@@ -252,12 +287,16 @@ function Agenda() {
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Chip aoClicar={() => setSoEu(true)} selecionado={soEu}>
-            Só eu
-          </Chip>
-          <Chip aoClicar={() => setSoEu(false)} selecionado={!soEu}>
-            Todos
-          </Chip>
+          {podeVerTodos && (
+            <>
+              <Chip aoClicar={() => setSoEu(true)} selecionado={soEu}>
+                Só eu
+              </Chip>
+              <Chip aoClicar={() => setSoEu(false)} selecionado={!soEu}>
+                Todos
+              </Chip>
+            </>
+          )}
           <Link
             to={'/salao/resumo?data=' + data}
             className="ml-auto inline-flex min-h-12 items-center gap-2 rounded-full border-2 border-principal bg-superficie px-4 font-semibold text-principal"
@@ -321,7 +360,7 @@ function Agenda() {
                 <ItemDeAtendimento
                   key={item.chave}
                   item={item}
-                  mostrarProfissional={!soEu}
+                  mostrarProfissional={filtro === null}
                   aoAbrir={() => setAbertoId(item.agendamento.id)}
                 />
               )
@@ -330,7 +369,7 @@ function Agenda() {
                 key={item.chave}
                 item={item}
                 data={data}
-                nomeDoProfissional={soEu ? '' : nomes[item.profissionalId]}
+                nomeDoProfissional={filtro !== null ? '' : nomes[item.profissionalId]}
               />
           })}
 

@@ -6,8 +6,10 @@ import Botao from '../../components/Botao.jsx'
 import CampoTexto from '../../components/CampoTexto.jsx'
 import Card from '../../components/Card.jsx'
 import Chip from '../../components/Chip.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import { listarClientesDoSalao } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import {
   filtrarClientes,
   formatarCelular,
@@ -19,6 +21,7 @@ import {
 import { hojeEmSaoPaulo } from '../../utils/fuso.js'
 
 function Clientes() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const location = useLocation()
   const [hoje] = useState(hojeEmSaoPaulo)
   const [clientes, setClientes] = useState(null)
@@ -34,8 +37,12 @@ function Clientes() {
     async function carregar() {
       setClientes(await listarClientesDoSalao())
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [])
+
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
+  }
 
   const buscando = busca.trim().length > 0
   const visiveis = clientes ? ordenarClientes(buscando ? filtrarClientes(clientes, busca) : clientes, ordem) : []

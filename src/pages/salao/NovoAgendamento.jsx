@@ -6,6 +6,7 @@ import CampoTexto from '../../components/CampoTexto.jsx'
 import Chip from '../../components/Chip.jsx'
 import DiaDaFaixa from '../../components/DiaDaFaixa.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import FileiraRolavel from '../../components/FileiraRolavel.jsx'
 import GradeDeHorarios from '../../components/GradeDeHorarios.jsx'
@@ -23,7 +24,9 @@ import {
   listarServicosComVariacoes,
   verificarEncaixe,
 } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import {
+  itensParaOBanco,
   juntarComE,
   profissionaisQueFazemTudo,
   resumirEscolha,
@@ -44,7 +47,7 @@ import { hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from 
 import { formatarMinutos, minutosDaHora } from '../../utils/horariosLivres.js'
 import { mostrarAcimaDoRodape, rolarFaixaParaODia } from '../../utils/rolagem.js'
 import { precoParaMostrar } from '../../utils/precos.js'
-import { profissionalLogado } from '../../utils/sessao.js'
+import { mostrarEscolhaDeProfissional, papelLogado, profissionalLogado } from '../../utils/sessao.js'
 
 const quantidadeDeDias = 21
 
@@ -60,7 +63,7 @@ function lerParametros(params, hoje, idLogado) {
   return {
     data: dataValida ? data : hoje,
     minutos: dataValida && horaValida ? minutosDaHora(hora) : null,
-    profissionalId: Number.isInteger(profissional) && profissional > 0 ? profissional : idLogado,
+    profissionalId: papelLogado() === 'dono' && Number.isInteger(profissional) && profissional > 0 ? profissional : idLogado,
     clienteId: Number.isInteger(clienteId) && clienteId > 0 ? clienteId : null,
   }
 }
@@ -117,6 +120,7 @@ function LinhaDeServico({ servico, item, profissionalId, aoTocar }) {
 }
 
 function NovoAgendamento() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const navegar = useNavigate()
   const [params] = useSearchParams()
   const idLogado = profissionalLogado()
@@ -173,7 +177,7 @@ function NovoAgendamento() {
         setTelefoneDaRota(daRota.telefone)
       }
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [inicial.clienteId])
 
   useEffect(() => {
@@ -181,12 +185,13 @@ function NovoAgendamento() {
       const proximosDias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
       setDiasAbertos(await listarDatasAbertas(profissionalId, [], proximosDias))
     }
-    carregarDias()
+    carregarDias().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [profissionalId, hoje])
 
   const resumo = base ? resumirEscolha(escolha, base.servicos, profissionalId) : resumirEscolha([], [])
   const servicoIds = resumo.itens.map((item) => item.servico.id)
   const chaveDosServicos = servicoIds.join(',')
+  const chaveDosItens = JSON.stringify(itensParaOBanco(resumo))
   const possiveis = base ? profissionaisQueFazemTudo(base.profissionais, resumo.itens) : []
   const profissional = possiveis.find((item) => item.id === profissionalId) || null
   const profissionalAtual = base ? base.profissionais.find((item) => item.id === profissionalId) : null
@@ -204,14 +209,15 @@ function NovoAgendamento() {
         chaveDosServicos.split(',').map(Number),
         null,
         true,
+        JSON.parse(chaveDosItens),
       )
       if (atual) setHorarios(livres)
     }
-    carregarHorarios()
+    carregarHorarios().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
     return () => {
       atual = false
     }
-  }, [podeVerHorarios, data, profissionalId, resumo.duracaoTotal, chaveDosServicos])
+  }, [podeVerHorarios, data, profissionalId, resumo.duracaoTotal, chaveDosServicos, chaveDosItens])
 
   useEffect(() => {
     rolarFaixaParaODia(data)
@@ -386,7 +392,15 @@ function NovoAgendamento() {
     setSalvando(true)
     let continuaLivre = false
     if (horario.origem === 'lista') {
-      const livres = await listarHorariosLivres(data, profissionalId, resumo.duracaoTotal, servicoIds, null, true)
+      const livres = await listarHorariosLivres(
+        data,
+        profissionalId,
+        resumo.duracaoTotal,
+        servicoIds,
+        null,
+        true,
+        itensParaOBanco(resumo),
+      )
       continuaLivre = livres.some((livre) => livre.minutos === horario.minutos)
     } else {
       continuaLivre = Boolean((await verificarEncaixe(profissionalId, data, horario.minutos, resumo.duracaoTotal)).livre)
@@ -428,6 +442,10 @@ function NovoAgendamento() {
         todos: profissionalId !== idLogado,
       },
     })
+  }
+
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
   }
 
   if (!base) {
@@ -573,7 +591,9 @@ function NovoAgendamento() {
       </Secao>
 
       <Secao id="secao-profissional" numero="3" titulo="Profissional" erro={mostrarErro('profissional')}>
-        {possiveis.length === 0 ? (
+        {!mostrarEscolhaDeProfissional(papelLogado(), base.profissionais.length) ? (
+          <p>{profissionalAtual ? profissionalAtual.nome.split(' ')[0] + ' (você)' : 'Você'}</p>
+        ) : possiveis.length === 0 ? (
           <p>Nenhum profissional faz todos esses serviços juntos. Tire um dos serviços.</p>
         ) : (
           <div className="flex flex-wrap gap-2">

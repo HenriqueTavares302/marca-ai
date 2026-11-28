@@ -7,6 +7,7 @@ import Botao from '../../components/Botao.jsx'
 import CampoTexto from '../../components/CampoTexto.jsx'
 import Chip from '../../components/Chip.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import MensagemErro from '../../components/MensagemErro.jsx'
 import OpcaoDeEscolha from '../../components/OpcaoDeEscolha.jsx'
@@ -18,6 +19,7 @@ import {
   listarProfissionaisAtivos,
   salvarHorariosDoProfissional,
 } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import {
   diasDoProfissional,
   errosDosHorarios,
@@ -26,7 +28,7 @@ import {
   ordemDaSemana,
 } from '../../utils/expediente.js'
 import { juntarComE } from '../../utils/agendamento.js'
-import { profissionalLogado } from '../../utils/sessao.js'
+import { mostrarEscolhaDeProfissional, papelLogado, profissionalLogado } from '../../utils/sessao.js'
 
 function textoDosIntervalos(dia) {
   if (!dia.atende) return 'Não atende'
@@ -43,6 +45,7 @@ function semChaves(dias) {
 }
 
 function HorariosDeTrabalho() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const idLogado = profissionalLogado()
   const [profissionais, setProfissionais] = useState([])
   const [salao, setSalao] = useState(null)
@@ -64,7 +67,7 @@ function HorariosDeTrabalho() {
       setProfissionais(lista)
       setSalao(dadosDoSalao)
     }
-    carregarBase()
+    carregarBase().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [])
 
   useEffect(() => {
@@ -81,7 +84,7 @@ function HorariosDeTrabalho() {
       setInicial(semChaves(novosDias))
       setTentouSalvar(false)
     }
-    carregarDias()
+    carregarDias().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
     return () => {
       atual = false
     }
@@ -96,7 +99,7 @@ function HorariosDeTrabalho() {
       const lista = await conferirHorariosDoProfissional(profissionalId, dias)
       if (atual) setForaDoHorario(lista)
     }
-    conferir()
+    conferir().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
     return () => {
       atual = false
     }
@@ -244,28 +247,34 @@ function HorariosDeTrabalho() {
     setTrocarPara(null)
   }
 
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
+  }
+
   const nomeDoProfissional = (profissionais.find((item) => item.id === profissionalId) || { nome: '' }).nome.split(' ')[0]
   const quantidadeFora = foraDoHorario.length
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <p className="font-medium" id="rotulo-profissional">
-          Profissional
-        </p>
-        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="rotulo-profissional">
-          {profissionais.map((profissional) => (
-            <Chip
-              key={profissional.id}
-              selecionado={profissional.id === profissionalId}
-              aoClicar={() => escolherProfissional(profissional.id)}
-            >
-              {profissional.nome.split(' ')[0]}
-              {profissional.id === idLogado ? ' (você)' : ''}
-            </Chip>
-          ))}
+      {mostrarEscolhaDeProfissional(papelLogado(), profissionais.length) && (
+        <div className="flex flex-col gap-2">
+          <p className="font-medium" id="rotulo-profissional">
+            Profissional
+          </p>
+          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="rotulo-profissional">
+            {profissionais.map((profissional) => (
+              <Chip
+                key={profissional.id}
+                selecionado={profissional.id === profissionalId}
+                aoClicar={() => escolherProfissional(profissional.id)}
+              >
+                {profissional.nome.split(' ')[0]}
+                {profissional.id === idLogado ? ' (você)' : ''}
+              </Chip>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <p className="text-texto-suave">
         O espaço entre dois intervalos (como o almoço) aparece na agenda como Intervalo e não recebe agendamentos.

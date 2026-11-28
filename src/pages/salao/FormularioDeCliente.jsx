@@ -5,13 +5,16 @@ import Botao from '../../components/Botao.jsx'
 import CampoTexto from '../../components/CampoTexto.jsx'
 import Card from '../../components/Card.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import MensagemErro from '../../components/MensagemErro.jsx'
 import RodapeFixo from '../../components/RodapeFixo.jsx'
 import { buscarFichaDoCliente, conferirCliente, salvarCliente } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { formatarCelular } from '../../utils/cliente.js'
 
 function FormularioDeCliente() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const params = useParams()
   const navegar = useNavigate()
   const editando = params.id !== undefined
@@ -43,7 +46,7 @@ function FormularioDeCliente() {
       }
       setCarregado(true)
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [editando, id])
 
   useEffect(() => {
@@ -53,7 +56,7 @@ function FormularioDeCliente() {
       const encontrados = await conferirCliente({ id, ...formulario })
       if (atual) setErros(encontrados)
     }
-    conferir()
+    conferir().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
     return () => {
       atual = false
     }
@@ -108,6 +111,10 @@ function FormularioDeCliente() {
       replace: true,
       state: { aviso: editando ? 'Dados salvos.' : 'Cliente cadastrado.' },
     })
+  }
+
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
   }
 
   if (!carregado) {

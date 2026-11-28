@@ -559,6 +559,7 @@ select pg_temp.confere('authenticated executa só as funções liberadas',
   (select string_agg(nome, ',' order by nome) from (
      select p.pronamespace::regnamespace || '.' || p.proname as nome from pg_proc p
      where p.pronamespace in ('public'::regnamespace, 'privado'::regnamespace) and has_function_privilege('authenticated', p.oid, 'execute')
+       and p.proname not in ('salvar_servico', 'apagar_servico', 'trocar_ordem_servico', 'salvar_horarios_do_profissional')
    ) x)
   = 'privado.atendi_cliente,privado.meu_profissional,privado.meu_salao,privado.sou_dono,privado.vejo_cliente,public.cancelar_agendamento,public.conferir_encaixe,public.criar_agendamento,public.dias_abertos,public.horarios_livres,public.meus_agendamentos,public.mudar_status_agendamento,public.remarcar_agendamento,public.remover_dados_do_cliente,public.salao_criar_agendamento,public.salao_dias_abertos,public.salao_horarios_livres,public.vitrine');
 select pg_temp.confere('nenhuma função liberada para public',

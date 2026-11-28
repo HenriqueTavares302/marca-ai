@@ -4,11 +4,13 @@ import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import Card from '../../components/Card.jsx'
 import Chip from '../../components/Chip.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
-import { buscarResumo } from '../../data/consultas.js'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
+import { buscarResumo, listarProfissionaisAtivos } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { formatarPreco } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo } from '../../utils/fuso.js'
 import { andarNoPeriodo, tiposDePeriodo } from '../../utils/resumo.js'
-import { profissionalLogado } from '../../utils/sessao.js'
+import { mostrarEscolhaDeProfissional, papelLogado, profissionalLogado } from '../../utils/sessao.js'
 
 function plural(quantidade, singular, pluralDaPalavra) {
   return quantidade + ' ' + (quantidade === 1 ? singular : pluralDaPalavra)
@@ -52,20 +54,42 @@ function Resumo() {
   })
   const [soEu, setSoEu] = useState(true)
   const [resumo, setResumo] = useState(null)
-  const filtro = soEu ? idLogado : null
+  const [ativos, setAtivos] = useState(null)
+  const [erro, setErro] = useState(null)
+  const [tentativa, setTentativa] = useState(0)
+  const podeVerTodos = papelLogado() === 'dono' && (ativos === null || mostrarEscolhaDeProfissional('dono', ativos.length))
+  const filtro = soEu || !podeVerTodos ? idLogado : null
   const chave = tipo + '|' + data + '|' + filtro
+
+  useEffect(() => {
+    async function carregarAtivos() {
+      try {
+        setAtivos(await listarProfissionaisAtivos())
+      } catch {
+        setAtivos([])
+      }
+    }
+    carregarAtivos()
+  }, [])
 
   useEffect(() => {
     let atual = true
     async function carregar() {
-      const dados = await buscarResumo(tipo, data, filtro)
-      if (atual) setResumo({ ...dados, chave: tipo + '|' + data + '|' + filtro })
+      try {
+        const dados = await buscarResumo(tipo, data, filtro)
+        if (atual) {
+          setResumo({ ...dados, chave: tipo + '|' + data + '|' + filtro })
+          setErro(null)
+        }
+      } catch (problema) {
+        if (atual) setErro(codigoDoProblema(problema))
+      }
     }
     carregar()
     return () => {
       atual = false
     }
-  }, [tipo, data, filtro])
+  }, [tipo, data, filtro, tentativa])
 
   const carregado = resumo && resumo.chave === chave
   const noPeriodoAtual = carregado && hoje >= resumo.periodo.inicio && hoje <= resumo.periodo.fim
@@ -122,14 +146,25 @@ function Resumo() {
           </button>
         )}
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Profissionais">
-          <Chip aoClicar={() => setSoEu(true)} selecionado={soEu}>
-            Só eu
-          </Chip>
-          <Chip aoClicar={() => setSoEu(false)} selecionado={!soEu}>
-            Todos
-          </Chip>
-        </div>
+        {podeVerTodos && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Profissionais">
+            <Chip aoClicar={() => setSoEu(true)} selecionado={soEu}>
+              Só eu
+            </Chip>
+            <Chip aoClicar={() => setSoEu(false)} selecionado={!soEu}>
+              Todos
+            </Chip>
+          </div>
+        )}
+        {erro && (
+          <ErroAoCarregar
+            codigo={erro}
+            aoTentarDeNovo={() => {
+              setErro(null)
+              setTentativa(tentativa + 1)
+            }}
+          />
+        )}
       </div>
 
       <p className="sr-only" role="status">

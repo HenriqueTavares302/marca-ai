@@ -6,6 +6,7 @@ import Aviso from '../../components/Aviso.jsx'
 import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import {
   buscarSalao,
@@ -14,9 +15,11 @@ import {
   listarProfissionaisAtivos,
   removerBloqueio,
 } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { descreverBloqueio } from '../../utils/expediente.js'
 
 function Bloqueios() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const location = useLocation()
   const idCriado = location.state && Number.isInteger(location.state.bloqueioId) ? location.state.bloqueioId : null
   const [dados, setDados] = useState(null)
@@ -40,7 +43,7 @@ function Bloqueios() {
       const criado = bloqueios.find((bloqueio) => bloqueio.id === idCriado)
       if (criado) setParaAvisar(await conflitosDoBloqueio(criado.profissional_id, criado.inicio, criado.fim))
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [idCriado])
 
   async function confirmarRemocao() {
@@ -58,6 +61,10 @@ function Bloqueios() {
     if (removido.id === idCriado) setParaAvisar([])
     setAviso({ id: Date.now(), tipo: 'sucesso', mensagem: 'Bloqueio removido. Os horários voltaram a ficar livres.' })
     requestAnimationFrame(() => document.getElementById('titulo-bloqueios').focus())
+  }
+
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
   }
 
   if (!dados) {

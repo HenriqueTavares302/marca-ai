@@ -12,7 +12,7 @@ import { salao } from '../salao.js'
 import { servico_variacoes as variacoesDeExemplo } from '../servico_variacoes.js'
 import { categorias as categoriasDeExemplo, servicos as servicosDeExemplo } from '../servicos.js'
 import { diaDaSemana, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
-import { apenasDigitosDoCelular, erroDoCelular, erroDoNome } from '../../utils/cliente.js'
+import { apenasDigitosDoCelular, errosDoCliente } from '../../utils/cliente.js'
 import { calcularHorariosLivres } from '../../utils/horariosLivres.js'
 import {
   agendamentosForaDoHorario,
@@ -969,26 +969,6 @@ export async function buscarFichaDoCliente(id) {
 
 export async function conferirCliente(dados) {
   return errosDoCliente(dados, todosOsClientes())
-}
-
-function errosDoCliente(dados, lista) {
-  const erros = {}
-  const erroDeNome = erroDoNome(dados.nome)
-  if (erroDeNome) erros.nome = erroDeNome
-  else if (dados.nome.trim().length > 80) erros.nome = 'Use no máximo 80 caracteres.'
-
-  const telefone = apenasDigitosDoCelular(dados.celular)
-  const outro = lista.find((cliente) => cliente.telefone && cliente.telefone === telefone && cliente.id !== dados.id)
-  const atual = lista.find((cliente) => cliente.id === dados.id)
-  if (outro) {
-    erros.celular = 'Este celular já é de ' + outro.nome + '.'
-  } else if (!atual || atual.telefone !== telefone) {
-    const erroDeCelular = erroDoCelular(dados.celular)
-    if (erroDeCelular) erros.celular = erroDeCelular
-  }
-
-  if (String(dados.observacoes || '').length > 500) erros.observacoes = 'Use no máximo 500 caracteres.'
-  return erros
 }
 
 export async function salvarCliente(dados) {

@@ -2,6 +2,7 @@ export const codigosDoBanco = [
   'antecedencia_minima',
   'cliente_nao_encontrado',
   'codigos_demais',
+  'direcao_invalida',
   'data_invalida',
   'fora_do_expediente',
   'fora_do_prazo',
@@ -9,6 +10,7 @@ export const codigosDoBanco = [
   'horario_bloqueado',
   'horario_invalido',
   'horario_ocupado',
+  'horarios_sobrepostos',
   'limite_de_agendamentos',
   'mudanca_invalida',
   'muito_distante',
@@ -21,7 +23,12 @@ export const codigosDoBanco = [
   'recebimento_invalido',
   'salao_nao_encontrado',
   'sem_permissao',
+  'sem_profissional',
   'sem_profissional_livre',
+  'sem_vizinho',
+  'servico_invalido',
+  'servico_repetido',
+  'servico_usado',
   'servicos_invalidos',
   'tamanho_invalido',
   'telefone_invalido',
@@ -55,6 +62,7 @@ export function traduzirErro(problema, online = navegadorOnline()) {
   if (status === 401 || codigo === 'PGRST301' || codigo === 'PGRST303' || /jwt expired/i.test(mensagem)) return 'sessao_vencida'
   if (status === 403 || codigo === '42501' || /permission denied/i.test(mensagem)) return 'sem_permissao'
   if (status === 429) return 'muitas_tentativas'
+  if (codigo === '23505') return 'repetido'
   if (erro instanceof TypeError || /failed to fetch|networkerror|load failed|fetch failed/i.test(mensagem)) {
     return 'servidor_indisponivel'
   }

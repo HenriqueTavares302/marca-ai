@@ -6,9 +6,12 @@ import Botao from '../../components/Botao.jsx'
 import Card from '../../components/Card.jsx'
 import ChipDeStatus from '../../components/ChipDeStatus.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
+import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import PainelDoAtendimento from '../../components/PainelDoAtendimento.jsx'
 import { buscarFichaDoCliente, buscarSalao, removerDadosDoCliente } from '../../data/consultas.js'
+import { codigoDoProblema } from '../../data/supabase/erros.js'
+import { papelLogado } from '../../utils/sessao.js'
 import { textoDoValor, valorDoAgendamento } from '../../utils/agenda.js'
 import { formatarCelular } from '../../utils/cliente.js'
 import { formatarDataCurta, formatarPreco, linkDoWhatsapp } from '../../utils/formatos.js'
@@ -58,6 +61,7 @@ function Numero({ titulo, valor, detalhe }) {
 }
 
 function FichaDoCliente() {
+  const [erroAoCarregar, setErroAoCarregar] = useState(null)
   const params = useParams()
   const id = Number(params.id)
   const location = useLocation()
@@ -83,8 +87,12 @@ function FichaDoCliente() {
       setFicha(dados)
       setSalao(dadosDoSalao)
     }
-    carregar()
+    carregar().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
   }, [id, versao])
+
+  if (erroAoCarregar) {
+    return <ErroAoCarregar codigo={erroAoCarregar} aoTentarDeNovo={() => window.location.reload()} />
+  }
 
   if (ficha === undefined) {
     return (
@@ -233,16 +241,18 @@ function FichaDoCliente() {
         )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Privacidade</h2>
-        <p className="text-texto-suave">
-          Se o cliente pedir, você pode remover os dados pessoais do app.
-        </p>
-        <Botao variante="secundario" larguraTotal aoClicar={() => setRemovendo(true)}>
-          <UserX className="size-5" aria-hidden="true" />
-          Remover dados do cliente
-        </Botao>
-      </section>
+      {papelLogado() === 'dono' && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold">Privacidade</h2>
+          <p className="text-texto-suave">
+            Se o cliente pedir, você pode remover os dados pessoais do app.
+          </p>
+          <Botao variante="secundario" larguraTotal aoClicar={() => setRemovendo(true)}>
+            <UserX className="size-5" aria-hidden="true" />
+            Remover dados do cliente
+          </Botao>
+        </section>
+      )}
 
       <PainelDoAtendimento
         agendamento={aberto}

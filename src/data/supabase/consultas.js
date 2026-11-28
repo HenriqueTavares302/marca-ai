@@ -1,10 +1,10 @@
-import * as exemplo from '../exemplo/consultas.js'
 import { slugDoSalao } from '../../lib/salao.js'
 import { ErroDosDados } from './erros.js'
 import { executar } from './executar.js'
 import { esquecerCodigosAntigos, guardarMeuCodigo, lerMeusCodigos } from './meusCodigos.js'
 import { traduzirAgendamento, traduzirDias, traduzirHorariosLivres } from './traducoes.js'
 import { buscarVitrine } from './vitrine.js'
+import { criarAgendamentoNoSalao, listarDatasAbertasDoSalao, listarHorariosLivresDoSalao } from './salao.js'
 import { hojeEmSaoPaulo } from '../../utils/fuso.js'
 import {
   categoriasComServicos,
@@ -107,7 +107,7 @@ function buscarDias(profissionalId, itens, datas, remarcarId) {
 }
 
 export async function listarDatasAbertas(profissionalId, servicoIds, datas, itens = null, remarcarId = null) {
-  if (!itens) return exemplo.listarDatasAbertas(profissionalId, servicoIds, datas)
+  if (!itens) return listarDatasAbertasDoSalao(profissionalId, datas)
   if (datas.length === 0) return []
   const dias = await buscarDias(profissionalId, itens, datas, remarcarId)
   return datas.filter((data) => dias.some((dia) => dia.data === data && dia.aberto))
@@ -147,9 +147,8 @@ export async function listarHorariosLivres(
   semAntecedencia = false,
   itens = null,
 ) {
-  if (semAntecedencia || !itens) {
-    return exemplo.listarHorariosLivres(data, profissionalId, duracaoMinutos, servicoIds, ignorarAgendamentoId, semAntecedencia)
-  }
+  if (semAntecedencia) return listarHorariosLivresDoSalao(data, profissionalId, itens)
+  if (!itens) return []
   const parametros = comRemarcacao(
     { p_slug: slugDoSalao(), p_itens: itens, p_profissional_id: profissionalId, p_data: data },
     ignorarAgendamentoId,
@@ -158,7 +157,7 @@ export async function listarHorariosLivres(
 }
 
 export async function criarAgendamento(dados) {
-  if (dados.origem !== 'cliente') return exemplo.criarAgendamento(dados)
+  if (dados.origem !== 'cliente') return criarAgendamentoNoSalao(dados)
   const resultado = await executar((cliente) =>
     cliente.rpc('criar_agendamento', {
       p_slug: slugDoSalao(),
@@ -206,3 +205,29 @@ export async function cancelarAgendamento(id) {
 export async function remarcarAgendamento(id, profissionalId, novoInicio) {
   return alterarComCodigo('remarcar_agendamento', id, { p_inicio: novoInicio, p_profissional_id: profissionalId })
 }
+
+export {
+  alterarOrdemServico,
+  apagarServico,
+  atualizarStatusAgendamento,
+  buscarFichaDoCliente,
+  buscarResumo,
+  buscarServicoDoSalao,
+  conferirCliente,
+  conferirHorariosDoProfissional,
+  conflitosDoBloqueio,
+  criarBloqueio,
+  listarAgendaDoDia,
+  listarBloqueiosFuturos,
+  listarClientes,
+  listarClientesDoSalao,
+  listarHorariosDoProfissional,
+  listarProfissionaisAtivos,
+  listarServicosDoSalao,
+  removerBloqueio,
+  removerDadosDoCliente,
+  salvarCliente,
+  salvarHorariosDoProfissional,
+  salvarServico,
+  verificarEncaixe,
+} from './salao.js'
