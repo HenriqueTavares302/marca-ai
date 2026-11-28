@@ -5,7 +5,7 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 
 ## Como trabalhamos
 - O Henrique dá os prompts, o Claude escreve o código, o Henrique testa e aponta melhorias.
-- Tudo é feito por partes, seguindo o backlog do GitHub, uma issue por passo. Trabalhar em uma issue de cada vez, na ordem das milestones: "0 · Base" a "4 · Integração" (prontas), "5 · Diferenciais" (#50 e #51 primeiro, depois o resto pela ordem do número), "6 · Pronto para publicar" (PWA, acessibilidade, #44 e e-mails por domínio próprio), "7 · Vários salões" (#48, para o app já sair pronto para outros salões), "8 · Testes no salão" (#40: testar tudo com o dono; o que ele pedir vira correção), "9 · Documentação" e "10 · Play Store" (#41), que é a última de todas: depois de publicado, não mexer mais.
+- Tudo é feito por partes, seguindo o backlog do GitHub, uma issue por passo. Trabalhar em uma issue de cada vez, na ordem das milestones: "0 · Base" a "4 · Integração" (prontas), "5 · Diferenciais" (#50 e #51 primeiro, depois o resto pela ordem do número), "6 · Pronto para publicar" (PWA, acessibilidade, #44 e revisão dos e-mails no Gmail, #52), "7 · Vários salões" (#48, para o app já sair pronto para outros salões), "8 · Testes no salão" (#40: testar tudo com o dono; o que ele pedir vira correção), "9 · Documentação" e "10 · Publicação" (#41: publicar como PWA, sem loja, e congelar a versão), que é a última de todas: depois de publicado, não mexer mais. A fase "Futuro" guarda ideias sem data, como a Play Store (#53). Por enquanto nada pago: sem domínio próprio (vários salões usam marca-ai-nine.vercel.app/slug-do-salao, #48), e-mails pelo SMTP do Gmail e Pix grátis direto para a chave do salão, com confirmação manual pelo dono (#31).
 - Cada issue tem "O que fazer" e "Como testar". Antes de fechar, conferir os dois.
 - Mensagem de commit em português, curta, terminando com `Closes #N` da issue.
 - Documentação completa só no final (milestone 9, depois dos testes no salão). Não criar documentos extras no meio do caminho.
@@ -25,7 +25,7 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 - React + Vite + Tailwind CSS (v4, via `@tailwindcss/vite`).
 - Supabase: banco Postgres, login (Auth), fotos (Storage), tempo real (Realtime).
 - Sem API própria: o React fala direto com o Supabase, com segurança por RLS. Edge Functions só onde é necessário: pagamento Pix (criar cobrança e receber webhook), lembretes automáticos e ações sensíveis do dono.
-- Deploy na Vercel. Depois: PWA instalável e Capacitor para a Play Store.
+- Deploy na Vercel. Depois: PWA instalável, publicado sem loja (#41); Capacitor e Play Store só no futuro (#53).
 - Plano grátis do Supabase pausa o projeto após 7 dias sem atividade e não tem backup automático; por isso existe a issue de rotina de backup.
 
 ## Banco de dados
