@@ -5,10 +5,10 @@ App de agendamento para salão de cabeleireiro. Começou para o salão do pai do
 
 ## Como trabalhamos
 - O Henrique dá os prompts, o Claude escreve o código, o Henrique testa e aponta melhorias.
-- Tudo é feito por partes, seguindo o backlog do GitHub: milestones "0 · Base" até "7 · Documentação", uma issue por passo. Trabalhar em uma issue de cada vez, na ordem.
+- Tudo é feito por partes, seguindo o backlog do GitHub, uma issue por passo. Trabalhar em uma issue de cada vez, na ordem das milestones: "0 · Base" a "4 · Integração" (prontas), "5 · Diferenciais" (#50 e #51 primeiro, depois o resto pela ordem do número), "6 · Pronto para publicar" (PWA, acessibilidade, #44 e e-mails por domínio próprio), "7 · Vários salões" (#48, para o app já sair pronto para outros salões), "8 · Testes no salão" (#40: testar tudo com o dono; o que ele pedir vira correção), "9 · Documentação" e "10 · Play Store" (#41), que é a última de todas: depois de publicado, não mexer mais.
 - Cada issue tem "O que fazer" e "Como testar". Antes de fechar, conferir os dois.
 - Mensagem de commit em português, curta, terminando com `Closes #N` da issue.
-- Documentação completa só no final (milestone 7). Não criar documentos extras no meio do caminho.
+- Documentação completa só no final (milestone 9, depois dos testes no salão). Não criar documentos extras no meio do caminho.
 - Antes de cada commit, fazer uma revisão rápida de segurança e me dizer o resultado: nenhuma chave ou senha no código, nenhum dado pessoal real (telefone, e-mail, endereço, nome de cliente), nada sensível em logs ou no console, links externos abrindo com rel=noopener, e dependências novas justificadas.
 
 ## Regras obrigatórias
