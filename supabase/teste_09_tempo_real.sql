@@ -106,6 +106,82 @@ $$;
 
 
 
+do $$
+begin
+  delete from public.agendamentos
+  where salao_id = '00000000-0000-4000-8000-000000000001' and id > 18;
+
+  update public.agendamentos a
+  set status = s.status, valor_total = s.valor_total, forma_pagamento = s.forma_pagamento,
+      pago = s.pago, forma_recebida = null, observacoes = s.observacoes
+  from (values
+    (1, 'concluido', 45::numeric, 'salao', true, null::text),
+    (2, 'concluido', 65, 'salao', true, null),
+    (3, 'concluido', 190, 'salao', true, null),
+    (4, 'faltou', 80, 'salao', false, null),
+    (5, 'concluido', 70, 'salao', true, null),
+    (6, 'concluido', 130, 'salao', true, null),
+    (7, 'cancelado', 75, 'salao', false, 'Cliente desmarcou pelo WhatsApp.'),
+    (8, 'concluido', 45, 'salao', true, null),
+    (9, 'agendado', 145, 'pix', true, null),
+    (10, 'agendado', null, 'salao', false, 'Valor combinado na avaliação.'),
+    (11, 'agendado', 200, 'salao', false, null),
+    (12, 'agendado', 45, 'salao', false, null),
+    (13, 'cancelado', 35, 'salao', false, null),
+    (14, 'agendado', 90, 'salao', false, null),
+    (15, 'agendado', 90, 'salao', false, null),
+    (16, 'agendado', 80, 'salao', false, null),
+    (17, 'agendado', 130, 'salao', false, null),
+    (18, 'agendado', 150, 'salao', false, null)
+  ) as s (id, status, valor_total, forma_pagamento, pago, observacoes)
+  where a.id = s.id and a.salao_id = '00000000-0000-4000-8000-000000000001';
+
+  update public.clientes c
+  set nome = s.nome, telefone = s.telefone, email = null, observacoes = s.observacoes, user_id = null
+  from (values
+    (1, 'Mariana Costa', '00900000001', null::text),
+    (2, 'Juliana Ferreira', '00900000002', 'Prefere escova mais lisa.'),
+    (3, 'Patrícia Lima', '00900000003', 'Coloração 6.0 com 20 volumes.'),
+    (4, 'Rafael Oliveira', '00900000004', null),
+    (5, 'Lucas Almeida', '00900000005', null),
+    (6, 'Fernanda Rocha', '00900000006', null),
+    (7, 'Camila Martins', '00900000007', 'Alergia a amônia.'),
+    (8, 'Bruno Santos', '00900000008', null)
+  ) as s (id, nome, telefone, observacoes)
+  where c.id = s.id and c.salao_id = '00000000-0000-4000-8000-000000000001';
+
+  delete from public.bloqueios
+  where salao_id = '00000000-0000-4000-8000-000000000001'
+    and id > (select min(b.id) from public.bloqueios b where b.salao_id = '00000000-0000-4000-8000-000000000001');
+
+  if to_regclass('public.horarios_especiais') is not null then
+    execute $c$delete from public.horarios_especiais where salao_id = '00000000-0000-4000-8000-000000000001'$c$;
+  end if;
+
+  delete from public.horarios_trabalho
+  where salao_id = '00000000-0000-4000-8000-000000000001' and profissional_id in (1, 2);
+  insert into public.horarios_trabalho (salao_id, profissional_id, dia_semana, inicio, fim)
+  select '00000000-0000-4000-8000-000000000001', profissional_id, dia_semana, inicio, fim
+  from (
+    values (1, 1, time '09:00', time '12:00')
+    union all
+    select profissional_id, dia_semana, intervalo.inicio, intervalo.fim
+    from (values (1), (2)) as pessoas (profissional_id)
+    cross join generate_series(2, 6) as dia_semana
+    cross join (values (time '09:00', time '12:00'), (time '13:00', time '19:00')) as intervalo (inicio, fim)
+  ) as horarios (profissional_id, dia_semana, inicio, fim);
+
+  update public.profissionais set ativo = true
+  where salao_id = '00000000-0000-4000-8000-000000000001' and id in (1, 2);
+  update public.salao
+  set intervalo_minutos = 30, antecedencia_minima_minutos = 60, cancelamento_minimo_minutos = 120
+  where id = '00000000-0000-4000-8000-000000000001';
+
+  perform set_config('marca_aviso.' || t, '', true)
+  from unnest(array['agendamentos', 'bloqueios', 'horarios', 'clientes', 'servicos', 'equipe', 'salao']) t;
+end;
+$$;
+
 insert into auth.users (id, email) values
   ('a0000000-0000-4000-8000-000000000001', 'roberto@exemplo.com'),
   ('a0000000-0000-4000-8000-000000000002', 'ana@exemplo.com'),
