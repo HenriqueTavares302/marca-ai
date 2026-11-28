@@ -158,6 +158,7 @@ function NovoAgendamento() {
 
   const [tentouAgendar, setTentouAgendar] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [perguntarFora, setPerguntarFora] = useState(false)
   const [erroGeral, setErroGeral] = useState('')
   const enviando = useRef(false)
   const saindoDeProposito = useRef(false)
@@ -333,6 +334,7 @@ function NovoAgendamento() {
   function escolherDia(novaData) {
     setData(novaData)
     if (horario && horario.data !== novaData) setHorario(null)
+    if (!diasAbertos.includes(novaData)) setMostrarEncaixe(true)
   }
 
   async function conferirEncaixe() {
@@ -378,7 +380,7 @@ function NovoAgendamento() {
     horario: horarioValido ? '' : 'Escolha um horário livre ou confira um encaixe.',
   }
 
-  async function agendar() {
+  async function agendar(confirmouFora = false) {
     if (enviando.current) return
     setTentouAgendar(true)
     setErroGeral('')
@@ -387,6 +389,11 @@ function NovoAgendamento() {
       irPara('secao-' + primeiroErro)
       return
     }
+    if (!confirmouFora && horario.origem === 'manual' && encaixe && encaixe.foraDoExpediente) {
+      setPerguntarFora(true)
+      return
+    }
+    setPerguntarFora(false)
 
     enviando.current = true
     setSalvando(true)
@@ -623,6 +630,7 @@ function NovoAgendamento() {
                 data={dia}
                 hoje={hoje}
                 aberto={diasAbertos.includes(dia)}
+                fechadoTocavel
                 selecionado={dia === data}
                 aoEscolher={() => escolherDia(dia)}
               />
@@ -635,7 +643,11 @@ function NovoAgendamento() {
         )}
         {podeVerHorarios && horarios === null && <Esqueleto classes="h-32 w-full" />}
         {podeVerHorarios && horarios !== null && horarios.length === 0 && (
-          <p className="font-semibold">Sem horários livres neste dia. Use um encaixe ou escolha outro dia.</p>
+          <p className="font-semibold">
+            {diasAbertos.includes(data)
+              ? 'Sem horários livres neste dia. Use um encaixe ou escolha outro dia.'
+              : 'Dia fechado. Para marcar mesmo assim, use Outro horário (encaixe).'}
+          </p>
         )}
         {podeVerHorarios && horarios !== null && horarios.length > 0 && (
           <GradeDeHorarios
@@ -762,7 +774,7 @@ function NovoAgendamento() {
           </span>
         </p>
         {erroGeral && <MensagemErro texto={erroGeral} />}
-        <Botao larguraTotal grande carregando={salvando} aoClicar={agendar}>
+        <Botao larguraTotal grande carregando={salvando} aoClicar={() => agendar()}>
           {salvando ? 'Agendando...' : 'Agendar'}
         </Botao>
       </RodapeFixo>
@@ -778,6 +790,29 @@ function NovoAgendamento() {
         }}
         aoFechar={() => setServicoDoPainel(null)}
       />
+
+      <Dialogo
+        aberto={perguntarFora}
+        titulo={
+          !profissional || profissional.id === idLogado
+            ? 'Fora do seu horário, marcar mesmo assim?'
+            : 'Fora do horário de ' + profissional.nome.split(' ')[0] + ', marcar mesmo assim?'
+        }
+        aoFechar={() => setPerguntarFora(false)}
+      >
+        <p className="text-texto-suave">
+          {horario && encaixe && encaixe.faixa ? 'O encaixe de ' + encaixe.faixa + ' fica fora do horário de trabalho. ' : ''}
+          O cliente não vê esse horário para marcar sozinho.
+        </p>
+        <div className="flex flex-col gap-2">
+          <Botao variante="secundario" larguraTotal aoClicar={() => setPerguntarFora(false)}>
+            Voltar
+          </Botao>
+          <Botao larguraTotal aoClicar={() => agendar(true)}>
+            Marcar mesmo assim
+          </Botao>
+        </div>
+      </Dialogo>
 
       <Dialogo
         aberto={bloqueio.state === 'blocked'}

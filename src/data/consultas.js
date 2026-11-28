@@ -1,5 +1,6 @@
 export {
   alterarOrdemServico,
+  apagarHorarioEspecial,
   apagarServico,
   atualizarStatusAgendamento,
   buscarFichaDoCliente,
@@ -23,6 +24,8 @@ export {
   listarDiasLotados,
   listarHorarioDoSalao,
   listarHorariosDoProfissional,
+  listarHorariosEspeciais,
+  listarHorariosEspeciaisDoSalao,
   listarHorariosLivres,
   listarMeusAgendamentos,
   listarProfissionaisAtivos,
@@ -35,6 +38,7 @@ export {
   removerBloqueio,
   removerDadosDoCliente,
   salvarCliente,
+  salvarHorarioEspecial,
   salvarHorariosDoProfissional,
   salvarServico,
   verificarEncaixe,

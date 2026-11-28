@@ -11,6 +11,7 @@ import {
   duracaoDosItens,
   hojeJaEncerrou,
   horarioDoSalao,
+  horariosEspeciaisDoSalao,
   quemPodeAtender,
   profissionaisComServicos,
   servicosComVariacoes,
@@ -41,6 +42,10 @@ export async function listarServicosPopulares(quantidade) {
 
 export async function listarHorarioDoSalao() {
   return horarioDoSalao(await lerVitrine())
+}
+
+export async function listarHorariosEspeciaisDoSalao() {
+  return horariosEspeciaisDoSalao(await lerVitrine(), hojeEmSaoPaulo())
 }
 
 export async function listarProfissionaisComServicos() {
@@ -208,6 +213,7 @@ export async function remarcarAgendamento(id, profissionalId, novoInicio) {
 
 export {
   alterarOrdemServico,
+  apagarHorarioEspecial,
   apagarServico,
   atualizarStatusAgendamento,
   buscarFichaDoCliente,
@@ -222,11 +228,13 @@ export {
   listarClientes,
   listarClientesDoSalao,
   listarHorariosDoProfissional,
+  listarHorariosEspeciais,
   listarProfissionaisAtivos,
   listarServicosDoSalao,
   removerBloqueio,
   removerDadosDoCliente,
   salvarCliente,
+  salvarHorarioEspecial,
   salvarHorariosDoProfissional,
   salvarServico,
   verificarEncaixe,

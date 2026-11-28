@@ -2,10 +2,30 @@ import { Check } from 'lucide-react'
 import { formatarDataLonga, nomeCurtoDoDia, numeroDoDia } from '../utils/formatos.js'
 import { somarDias } from '../utils/fuso.js'
 
-function DiaDaFaixa({ data, hoje, aberto, lotado = false, encerrado = false, selecionado, aoEscolher }) {
+function DiaDaFaixa({ data, hoje, aberto, lotado = false, encerrado = false, fechadoTocavel = false, selecionado, aoEscolher }) {
   let rotulo = nomeCurtoDoDia(data)
   if (data === hoje) rotulo = 'Hoje'
   if (data === somarDias(hoje, 1)) rotulo = 'Amanhã'
+
+  if (!aberto && fechadoTocavel && !lotado && !encerrado) {
+    const coresDoFechado = selecionado
+      ? 'border-solid border-principal bg-principal text-sobre-principal'
+      : 'border-dashed border-texto-suave bg-fundo text-texto-suave'
+    return (
+      <button
+        id={'dia-' + data}
+        type="button"
+        onClick={aoEscolher}
+        aria-pressed={selecionado}
+        aria-label={formatarDataLonga(data) + ', fechado'}
+        className={`flex min-h-20 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-2xl border-2 px-1 ${coresDoFechado}`}
+      >
+        <span>{rotulo}</span>
+        <span className="text-lg font-semibold">{numeroDoDia(data)}</span>
+        <span>Fechado</span>
+      </button>
+    )
+  }
 
   if (!aberto || lotado || encerrado) {
     return (

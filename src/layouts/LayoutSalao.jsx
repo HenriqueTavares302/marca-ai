@@ -72,6 +72,13 @@ const itensDoSalao = [
     voltarPara: '/salao/configuracoes',
   },
   {
+    caminho: '/salao/configuracoes/horarios-especiais',
+    titulo: 'Horários especiais',
+    foraDaBarra: true,
+    comVoltar: true,
+    voltarPara: '/salao/configuracoes',
+  },
+  {
     caminho: '/salao/configuracoes/bloqueios',
     titulo: 'Folgas e bloqueios',
     foraDaBarra: true,

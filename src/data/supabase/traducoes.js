@@ -82,6 +82,12 @@ export function traduzirVitrine(resposta) {
       inicio: horario.inicio,
       fim: horario.fim,
     })),
+    horarios_especiais: lista(resposta.horarios_especiais).map((horario) => ({
+      profissional_id: horario.profissional_id,
+      data: horario.data,
+      inicio: horario.inicio,
+      fim: horario.fim,
+    })),
   }
 }
 

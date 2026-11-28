@@ -294,10 +294,12 @@ select pg_temp.confere('privado.avisar_mudanca: security definer com search_path
   and not exists (
     select 1 from pg_proc p, aclexplode(p.proacl) a
     where p.pronamespace = 'privado'::regnamespace and p.proname = 'avisar_mudanca' and a.grantee = 0));
-select pg_temp.confere('os 8 gatilhos de aviso estão nas tabelas certas',
+select pg_temp.confere('os 8 gatilhos de aviso estão nas tabelas certas (e o 9º em horarios_especiais, com o 12)',
   (select string_agg(c.relname, ',' order by c.relname) from pg_trigger t join pg_class c on c.oid = t.tgrelid
-   where t.tgname = 'avisar_mudanca' and not t.tgisinternal)
-  = 'agendamentos,bloqueios,clientes,horarios_trabalho,profissionais,salao,servico_variacoes,servicos');
+   where t.tgname = 'avisar_mudanca' and not t.tgisinternal and c.relname <> 'horarios_especiais')
+  = 'agendamentos,bloqueios,clientes,horarios_trabalho,profissionais,salao,servico_variacoes,servicos'
+  and (to_regclass('public.horarios_especiais') is null or exists (
+    select 1 from pg_trigger t where t.tgname = 'avisar_mudanca' and t.tgrelid = to_regclass('public.horarios_especiais'))));
 
 
 select resultado from (

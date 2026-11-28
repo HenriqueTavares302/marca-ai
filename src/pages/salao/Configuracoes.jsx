@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarOff, ChartColumn, ChevronRight, Clock, LogOut, Store } from 'lucide-react'
+import { CalendarClock, CalendarOff, ChartColumn, ChevronRight, Clock, LogOut, Store } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
 import Dialogo from '../../components/Dialogo.jsx'
 import { sair } from '../../utils/sessao.js'
@@ -17,6 +17,12 @@ const itensDoMenu = [
     titulo: 'Horários de trabalho',
     explicacao: 'Dias e horas que cada profissional atende.',
     icone: Clock,
+  },
+  {
+    caminho: '/salao/configuracoes/horarios-especiais',
+    titulo: 'Horários especiais',
+    explicacao: 'Abrir um dia fechado ou mudar o horário de um dia só.',
+    icone: CalendarClock,
   },
   {
     caminho: '/salao/configuracoes/bloqueios',

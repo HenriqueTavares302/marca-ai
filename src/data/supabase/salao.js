@@ -1,7 +1,13 @@
 import { supabase } from '../../lib/supabase.js'
 import { apenasDigitosDoCelular, errosDoCliente } from '../../utils/cliente.js'
 import { agendamentosForaDoHorario, errosDosHorarios, horariosDosDias } from '../../utils/expediente.js'
-import { diaDaSemana, instanteEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import { diaDaSemana, hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
+import {
+  errosDoHorarioEspecial,
+  intervalosDoProfissionalNaData,
+  intervalosDoSalaoNaData,
+  juntarLinhasPorData,
+} from '../../utils/horarioEspecial.js'
 import { montarResumo, periodoDoResumo } from '../../utils/resumo.js'
 import { errosDoServico, temErros } from '../../utils/servico.js'
 import { ErroDosDados } from './erros.js'
@@ -131,18 +137,25 @@ export async function listarAgendaDoDia(data, profissionalId) {
   const ids = doDia.map((profissional) => profissional.id)
   const de = inicioDoDia(data)
   const ate = inicioDoDiaSeguinte(data)
-  const [agendamentos, bloqueios, turnos] = await Promise.all([
+  const [agendamentos, bloqueios, semana, especiais] = await Promise.all([
     lerAgendamentos((q) => q.in('profissional_id', ids).gte('inicio', de).lt('inicio', ate)),
     ler((c) => c.from('bloqueios').select('id, profissional_id, inicio, fim, motivo').in('profissional_id', ids).lt('inicio', ate).gt('fim', de).order('inicio')),
     ler((c) => c.from('horarios_trabalho').select('id, profissional_id, dia_semana, inicio, fim').in('profissional_id', ids).eq('dia_semana', diaDaSemana(data)).order('inicio')),
+    ler((c) => c.from('horarios_especiais').select('id, profissional_id, data, inicio, fim').in('profissional_id', ids).eq('data', data).order('inicio')),
   ])
-  const horariosDoSalao = vitrine.dados ? vitrine.dados.horarios_trabalho : turnos
+  const turnos = ids.flatMap((id) =>
+    intervalosDoProfissionalNaData(semana, especiais, id, data).map((turno) => ({ ...turno, dia_semana: diaDaSemana(data) })),
+  )
+  const ativos = catalogo.profissionais.filter((profissional) => profissional.ativo).map((profissional) => profissional.id)
+  const salaoAberto =
+    turnos.length > 0 ||
+    (vitrine.dados ? intervalosDoSalaoNaData(vitrine.dados.horarios_trabalho, vitrine.dados.horarios_especiais, ativos, data).length > 0 : false)
   return {
     profissionais: doDia,
     agendamentos: agendamentos.map((agendamento) => completarAgendamento(agendamento, catalogo)),
     bloqueios,
     turnos,
-    salaoAberto: horariosDoSalao.some((horario) => horario.dia_semana === diaDaSemana(data)),
+    salaoAberto,
   }
 }
 
@@ -202,7 +215,7 @@ export async function listarDatasAbertasDoSalao(profissionalId, datas) {
     : []
   return datas.filter((data) =>
     ids.some((id) => {
-      const atende = vitrine.dados.horarios_trabalho.some((h) => h.profissional_id === id && h.dia_semana === diaDaSemana(data))
+      const atende = intervalosDoProfissionalNaData(vitrine.dados.horarios_trabalho, vitrine.dados.horarios_especiais, id, data).length > 0
       const bloqueadoODia = bloqueios.some(
         (b) =>
           b.profissional_id === id &&
@@ -347,13 +360,64 @@ export async function listarHorariosDoProfissional(profissionalId) {
 
 export async function conferirHorariosDoProfissional(profissionalId, dias) {
   const agora = Date.now()
-  const [catalogo, futuros] = await Promise.all([
+  const [catalogo, futuros, especiais] = await Promise.all([
     lerCatalogoDoSalao(),
     lerAgendamentos((q) => q.eq('profissional_id', profissionalId).eq('status', 'agendado').gt('inicio', new Date(agora).toISOString())),
+    lerHorariosEspeciais(profissionalId),
   ])
-  return agendamentosForaDoHorario(futuros, horariosDosDias(dias, profissionalId), profissionalId, agora).map((agendamento) =>
+  const datasEspeciais = especiais.map((especial) => especial.data)
+  const semDiaEspecial = futuros.filter((agendamento) => !datasEspeciais.includes(partesEmSaoPaulo(agendamento.inicio).data))
+  return agendamentosForaDoHorario(semDiaEspecial, horariosDosDias(dias, profissionalId), profissionalId, agora).map((agendamento) =>
     completarAgendamento(agendamento, catalogo),
   )
+}
+
+async function lerHorariosEspeciais(profissionalId) {
+  return ler((c) =>
+    c.from('horarios_especiais').select('id, profissional_id, data, inicio, fim').eq('profissional_id', profissionalId)
+      .gte('data', hojeEmSaoPaulo()).order('data').order('inicio'),
+  )
+}
+
+export async function listarHorariosEspeciais(profissionalId) {
+  return juntarLinhasPorData(await lerHorariosEspeciais(profissionalId))
+}
+
+async function foraDoHorarioNaData(profissionalId, data, intervalos) {
+  const agora = Date.now()
+  const [catalogo, doDia, semana] = await Promise.all([
+    lerCatalogoDoSalao(),
+    lerAgendamentos((q) =>
+      q.eq('profissional_id', profissionalId).eq('status', 'agendado').gte('inicio', inicioDoDia(data)).lt('inicio', inicioDoDiaSeguinte(data)),
+    ),
+    intervalos.length > 0 ? [] : listarHorariosDoProfissional(profissionalId),
+  ])
+  const dia = diaDaSemana(data)
+  const valendo = intervalos.length > 0 ? intervalos : semana.filter((horario) => horario.dia_semana === dia)
+  const horarios = valendo.map((intervalo) => ({ profissional_id: profissionalId, dia_semana: dia, inicio: intervalo.inicio, fim: intervalo.fim }))
+  return agendamentosForaDoHorario(doDia, horarios, profissionalId, agora).map((agendamento) => completarAgendamento(agendamento, catalogo))
+}
+
+async function gravarHorarioEspecial(profissionalId, data, intervalos) {
+  const resultado = await executar((c) =>
+    c.rpc('salvar_horarios_especiais', {
+      p_profissional_id: profissionalId,
+      p_data: data,
+      p_linhas: intervalos.map((intervalo) => ({ inicio: intervalo.inicio, fim: intervalo.fim })),
+    }),
+  )
+  if (resultado.erro) return { erro: resultado.erro === 'horarios_sobrepostos' ? 'invalido' : resultado.erro }
+  limparCacheDaVitrine()
+  return { foraDoHorario: await foraDoHorarioNaData(profissionalId, data, intervalos) }
+}
+
+export async function salvarHorarioEspecial(profissionalId, data, intervalos) {
+  if (!Array.isArray(intervalos) || errosDoHorarioEspecial({ data, intervalos }, hojeEmSaoPaulo()).temErro) return { erro: 'invalido' }
+  return gravarHorarioEspecial(profissionalId, data, intervalos)
+}
+
+export async function apagarHorarioEspecial(profissionalId, data) {
+  return gravarHorarioEspecial(profissionalId, data, [])
 }
 
 export async function salvarHorariosDoProfissional(profissionalId, dias) {

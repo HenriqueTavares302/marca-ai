@@ -7,16 +7,16 @@ import Card from '../../components/Card.jsx'
 import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import Esqueleto from '../../components/Esqueleto.jsx'
 import PrecoDoServico from '../../components/PrecoDoServico.jsx'
-import { buscarSalao, listarHorarioDoSalao, listarServicosPopulares } from '../../data/consultas.js'
+import { buscarSalao, listarHorarioDoSalao, listarHorariosEspeciaisDoSalao, listarServicosPopulares } from '../../data/consultas.js'
 import { codigoDoProblema } from '../../data/supabase/erros.js'
-import { formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
-import { partesEmSaoPaulo } from '../../utils/fuso.js'
+import { formatarDataCurta, formatarDuracao, linkDoMapa, linkDoWhatsapp } from '../../utils/formatos.js'
+import { partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { precoParaMostrar } from '../../utils/precos.js'
-import { agruparHorariosDaSemana, horarioEmBaixo, situacaoDoSalao } from '../../utils/horarios.js'
+import { agruparHorariosDaSemana, horarioEmBaixo, situacaoDoSalao, textoDoHorario } from '../../utils/horarios.js'
 import { profissionalLogado } from '../../utils/sessao.js'
 
-function StatusDoSalao({ semana, agora }) {
-  const situacao = situacaoDoSalao(semana, agora)
+function StatusDoSalao({ semana, agora, especiais }) {
+  const situacao = situacaoDoSalao(semana, agora, especiais)
   const corDoPonto = situacao.aberto ? 'bg-principal' : 'bg-texto-suave'
 
   return (
@@ -34,19 +34,22 @@ function Inicio() {
   const [tentativa, setTentativa] = useState(0)
   const [salao, setSalao] = useState(null)
   const [semana, setSemana] = useState([])
+  const [especiais, setEspeciais] = useState([])
   const [populares, setPopulares] = useState([])
   const [agora, setAgora] = useState(() => new Date())
 
   useEffect(() => {
     async function carregar() {
       try {
-        const [dadosDoSalao, horarios, servicos] = await Promise.all([
+        const [dadosDoSalao, horarios, diasEspeciais, servicos] = await Promise.all([
           buscarSalao(),
           listarHorarioDoSalao(),
+          listarHorariosEspeciaisDoSalao(),
           listarServicosPopulares(4),
         ])
         setSalao(dadosDoSalao)
         setSemana(horarios)
+        setEspeciais(diasEspeciais)
         setPopulares(servicos)
         setErro(null)
       } catch (problema) {
@@ -68,6 +71,8 @@ function Inicio() {
   }, [])
 
   const diaDeHoje = partesEmSaoPaulo(agora).diaSemana
+  const dataDeHoje = partesEmSaoPaulo(agora).data
+  const proximosEspeciais = especiais.filter((dia) => dia.data >= dataDeHoje && dia.data <= somarDias(dataDeHoje, 13))
 
   const rodape = (
     <footer className="flex justify-center">
@@ -103,7 +108,7 @@ function Inicio() {
       />
 
       <section className="flex flex-col gap-3" aria-label="Agendamento">
-        {carregando ? <Esqueleto classes="h-6 w-64" /> : <StatusDoSalao semana={semana} agora={agora} />}
+        {carregando ? <Esqueleto classes="h-6 w-64" /> : <StatusDoSalao semana={semana} agora={agora} especiais={especiais} />}
         <Botao para="/servicos" larguraTotal grande>
           <CalendarPlus className="size-6" aria-hidden="true" />
           Agendar horário
@@ -214,6 +219,22 @@ function Inicio() {
                 )
               })}
             </dl>
+          )}
+          {!carregando && proximosEspeciais.length > 0 && (
+            <div className="mt-2 flex flex-col border-t-2 border-borda pt-3">
+              <h3 className="font-semibold">Horários especiais</h3>
+              <dl className="divide-y divide-borda">
+                {proximosEspeciais.map((dia) => (
+                  <div key={dia.data} className={`flex justify-between gap-3 py-2 ${dia.data === dataDeHoje ? 'font-semibold' : ''}`}>
+                    <dt>
+                      {formatarDataCurta(dia.data)}
+                      {dia.data === dataDeHoje && <span className="ml-2 text-principal">(hoje)</span>}
+                    </dt>
+                    <dd className="text-right">{textoDoHorario(dia.intervalos)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           )}
         </Card>
       </section>

@@ -23,6 +23,7 @@ import NovoAgendamento from './pages/salao/NovoAgendamento.jsx'
 import NovoBloqueio from './pages/salao/NovoBloqueio.jsx'
 import Resumo from './pages/salao/Resumo.jsx'
 import FormularioDeServico from './pages/salao/FormularioDeServico.jsx'
+import HorariosEspeciais from './pages/salao/HorariosEspeciais.jsx'
 import HorariosDeTrabalho from './pages/salao/HorariosDeTrabalho.jsx'
 import ServicosDoSalao from './pages/salao/Servicos.jsx'
 
@@ -54,6 +55,7 @@ const rotas = createBrowserRouter(
         <Route path="clientes/:id/editar" element={<FormularioDeCliente />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="configuracoes/horarios" element={<HorariosDeTrabalho />} />
+        <Route path="configuracoes/horarios-especiais" element={<HorariosEspeciais />} />
         <Route path="configuracoes/bloqueios" element={<Bloqueios />} />
         <Route path="configuracoes/bloqueios/novo" element={<NovoBloqueio />} />
         <Route path="novo" element={<NovoAgendamento />} />

@@ -1,4 +1,4 @@
-import { partesEmSaoPaulo } from './fuso.js'
+import { partesEmSaoPaulo, somarDias } from './fuso.js'
 
 const nomesDosDias =['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 
@@ -13,11 +13,16 @@ export function formatarHora(hora) {
   return Number(horas) + 'h' + (minutos === '00' ? '' : minutos)
 }
 
-export function situacaoDoSalao(semana, agora) {
+function intervalosDaData(semana, especiais, data, diaDaSemana) {
+  const especial = especiais.find((dia) => dia.data === data)
+  return especial ? especial.intervalos : semana[diaDaSemana] || []
+}
+
+export function situacaoDoSalao(semana, agora, especiais = []) {
   const agoraEmSaoPaulo = partesEmSaoPaulo(agora)
   const hoje = agoraEmSaoPaulo.diaSemana
   const horaAgora = agoraEmSaoPaulo.hora + ':00'
-  const intervalosDeHoje = semana[hoje] || []
+  const intervalosDeHoje = intervalosDaData(semana, especiais, agoraEmSaoPaulo.data, hoje)
 
   const atual = intervalosDeHoje.find((intervalo) => horaAgora >= intervalo.inicio && horaAgora < intervalo.fim)
   if (atual) {
@@ -31,7 +36,7 @@ export function situacaoDoSalao(semana, agora) {
 
   for (let dias = 1; dias <= 7; dias++) {
     const dia = (hoje + dias) % 7
-    const intervalos = semana[dia]
+    const intervalos = intervalosDaData(semana, especiais, somarDias(agoraEmSaoPaulo.data, dias), dia)
     if (intervalos && intervalos.length > 0) {
       const quando = dias === 1 ? 'amanhã' : nomesDosDias[dia]
       return { aberto: false, texto: 'Fechado agora', detalhe: 'abre ' + quando + ' às ' + formatarHora(intervalos[0].inicio) }
@@ -41,7 +46,7 @@ export function situacaoDoSalao(semana, agora) {
   return { aberto: false, texto: 'Fechado', detalhe: 'sem horários cadastrados' }
 }
 
-function textoDoHorario(intervalos) {
+export function textoDoHorario(intervalos) {
   if (!intervalos || intervalos.length === 0) return 'Fechado'
   return intervalos.map((intervalo) => formatarHora(intervalo.inicio) + ' às ' + formatarHora(intervalo.fim)).join(' e ')
 }

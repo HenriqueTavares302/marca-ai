@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useBlocker } from 'react-router-dom'
+import { Link, useBlocker } from 'react-router-dom'
 import { CircleAlert, Copy, Plus, Trash2 } from 'lucide-react'
 import AgendamentosAfetados from '../../components/AgendamentosAfetados.jsx'
 import Aviso from '../../components/Aviso.jsx'
@@ -278,6 +278,13 @@ function HorariosDeTrabalho() {
 
       <p className="text-texto-suave">
         O espaço entre dois intervalos (como o almoço) aparece na agenda como Intervalo e não recebe agendamentos.
+      </p>
+      <p className="text-texto-suave">
+        Para um dia diferente (abrir num domingo ou ficar até mais tarde),{' '}
+        <Link to="/salao/configuracoes/horarios-especiais" className="font-semibold text-principal underline underline-offset-4">
+          use Horários especiais
+        </Link>
+        .
       </p>
 
       {!dias ? (
