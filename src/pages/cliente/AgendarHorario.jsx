@@ -14,6 +14,7 @@ import RodapeFixo from '../../components/RodapeFixo.jsx'
 import SemServicosEscolhidos from '../../components/SemServicosEscolhidos.jsx'
 import {
   listarDatasAbertas,
+  listarDiasEncerrados,
   listarDiasLotados,
   listarHorariosLivres,
   listarProfissionaisComServicos,
@@ -46,7 +47,7 @@ const quantidadeDeDias = 21
 async function buscarDiaComVaga(dias, aPartirDe, dados) {
   for (let indice = aPartirDe; indice < dias.length; indice++) {
     const data = dias[indice]
-    if (!dados.diasAbertos.includes(data) || dados.lotados.includes(data)) continue
+    if (!dados.diasAbertos.includes(data) || dados.lotados.includes(data) || dados.encerrados.includes(data)) continue
     const livres = await listarHorariosLivres(
       data,
       dados.profissionalId,
@@ -128,9 +129,10 @@ function AgendarHorario() {
       const itens = itensParaOBanco(resumo)
       const remarcacao = carregarRemarcacao()
       const ignorarAgendamentoId = remarcacao ? remarcacao.agendamentoId : null
-      const [diasAbertos, lotados] = await Promise.all([
+      const [diasAbertos, lotados, encerrados] = await Promise.all([
         listarDatasAbertas(profissionalId, servicoIds, dias, itens, ignorarAgendamentoId),
         listarDiasLotados(profissionalId, itens, dias, ignorarAgendamentoId),
+        listarDiasEncerrados(profissionalId, itens, dias, ignorarAgendamentoId),
       ])
       const novosDados = {
         resumo,
@@ -144,6 +146,7 @@ function AgendarHorario() {
         itens,
         diasAbertos,
         lotados,
+        encerrados,
         duracao: resumo.duracaoTotal,
         nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
         nomes: Object.fromEntries(profissionais.map((item) => [item.id, item.nome])),
@@ -337,6 +340,7 @@ function AgendarHorario() {
                 hoje={dados.hoje}
                 aberto={dados.diasAbertos.includes(data)}
                 lotado={dados.lotados.includes(data)}
+                encerrado={dados.encerrados.includes(data)}
                 selecionado={data === dataSelecionada}
                 aoEscolher={() => {
                   setSemVagaNaFaixa(false)

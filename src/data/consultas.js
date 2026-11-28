@@ -12,6 +12,7 @@ export const listarProfissionaisComServicos = (...argumentos) => escolher('lista
 export const listarHorariosLivres = (...argumentos) => escolher('listarHorariosLivres')(...argumentos)
 export const listarDatasAbertas = (...argumentos) => escolher('listarDatasAbertas')(...argumentos)
 export const listarDiasLotados = (...argumentos) => escolher('listarDiasLotados')(...argumentos)
+export const listarDiasEncerrados = (...argumentos) => escolher('listarDiasEncerrados')(...argumentos)
 export const buscarProfissional = (...argumentos) => escolher('buscarProfissional')(...argumentos)
 export const listarServicos = (...argumentos) => escolher('listarServicos')(...argumentos)
 export const buscarServico = (...argumentos) => escolher('buscarServico')(...argumentos)

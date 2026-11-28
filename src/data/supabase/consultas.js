@@ -5,9 +5,13 @@ import { executar } from './executar.js'
 import { esquecerCodigosAntigos, guardarMeuCodigo, lerMeusCodigos } from './meusCodigos.js'
 import { traduzirAgendamento, traduzirDias, traduzirHorariosLivres } from './traducoes.js'
 import { buscarVitrine } from './vitrine.js'
+import { hojeEmSaoPaulo } from '../../utils/fuso.js'
 import {
   categoriasComServicos,
+  duracaoDosItens,
+  hojeJaEncerrou,
   horarioDoSalao,
+  quemPodeAtender,
   profissionaisComServicos,
   servicosComVariacoes,
   servicosPopulares,
@@ -109,10 +113,29 @@ export async function listarDatasAbertas(profissionalId, servicoIds, datas, iten
   return datas.filter((data) => dias.some((dia) => dia.data === data && dia.aberto))
 }
 
-export async function listarDiasLotados(profissionalId, itens, datas, remarcarId = null) {
-  if (!itens || datas.length === 0) return []
+async function diasSemVaga(profissionalId, itens, datas, remarcarId) {
+  if (!itens || datas.length === 0) return { lotados: [], encerrados: [] }
   const dias = await buscarDias(profissionalId, itens, datas, remarcarId)
-  return datas.filter((data) => dias.some((dia) => dia.data === data && dia.aberto && !dia.temHorarioLivre))
+  const semVaga = datas.filter((data) => dias.some((dia) => dia.data === data && dia.aberto && !dia.temHorarioLivre))
+  const hoje = hojeEmSaoPaulo()
+  if (!semVaga.includes(hoje)) return { lotados: semVaga, encerrados: [] }
+  const vitrine = await lerVitrine()
+  const encerrou = hojeJaEncerrou(
+    vitrine,
+    quemPodeAtender(vitrine, profissionalId, itens),
+    duracaoDosItens(vitrine, itens),
+    Date.now(),
+  )
+  if (!encerrou) return { lotados: semVaga, encerrados: [] }
+  return { lotados: semVaga.filter((data) => data !== hoje), encerrados: [hoje] }
+}
+
+export async function listarDiasLotados(profissionalId, itens, datas, remarcarId = null) {
+  return (await diasSemVaga(profissionalId, itens, datas, remarcarId)).lotados
+}
+
+export async function listarDiasEncerrados(profissionalId, itens, datas, remarcarId = null) {
+  return (await diasSemVaga(profissionalId, itens, datas, remarcarId)).encerrados
 }
 
 export async function listarHorariosLivres(

@@ -1,4 +1,5 @@
 import { juntarIntervalos } from '../../utils/expediente.js'
+import { partesEmSaoPaulo } from '../../utils/fuso.js'
 
 function ligacoesDoServico(vitrine, servicoId) {
   return vitrine.profissional_servicos.filter((ligacao) => ligacao.servico_id === servicoId)
@@ -60,4 +61,39 @@ export function horarioDoSalao(vitrine) {
     const doDia = vitrine.horarios_trabalho.filter((horario) => horario.dia_semana === dia)
     return doDia.length > 0 ? juntarIntervalos(doDia) : null
   })
+}
+
+function minutosDaHora(hora) {
+  const [horas, minutos] = String(hora).split(':').map(Number)
+  return horas * 60 + minutos
+}
+
+export function duracaoDosItens(vitrine, itens) {
+  return itens.reduce((total, item) => {
+    const variacao = item.variacao_id ? vitrine.servico_variacoes.find((v) => v.id === item.variacao_id) : null
+    const servico = vitrine.servicos.find((s) => s.id === item.servico_id)
+    const duracao = variacao ? variacao.duracao_min : servico ? servico.duracao_min : 0
+    return total + (duracao || 0)
+  }, 0)
+}
+
+export function quemPodeAtender(vitrine, profissionalId, itens) {
+  if (profissionalId) return [profissionalId]
+  return vitrine.profissionais
+    .map((profissional) => profissional.id)
+    .filter((id) =>
+      itens.every((item) =>
+        vitrine.profissional_servicos.some((ligacao) => ligacao.profissional_id === id && ligacao.servico_id === item.servico_id),
+      ),
+    )
+}
+
+export function hojeJaEncerrou(vitrine, profissionalIds, duracao, agora) {
+  const { diaSemana, minutosDoDia } = partesEmSaoPaulo(agora)
+  const primeiroInicioPossivel = minutosDoDia + (vitrine.salao.antecedencia_minima_minutos || 0)
+  return profissionalIds.every((id) =>
+    vitrine.horarios_trabalho
+      .filter((horario) => horario.profissional_id === id && horario.dia_semana === diaSemana)
+      .every((horario) => minutosDaHora(horario.fim) - duracao < primeiroInicioPossivel),
+  )
 }

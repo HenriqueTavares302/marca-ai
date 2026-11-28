@@ -233,6 +233,10 @@ export async function listarDiasLotados() {
   return []
 }
 
+export async function listarDiasEncerrados() {
+  return []
+}
+
 export async function buscarProfissional(id) {
   return profissionais.find((profissional) => profissional.id === id) || null
 }

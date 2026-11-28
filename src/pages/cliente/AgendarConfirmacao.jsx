@@ -504,7 +504,7 @@ function AgendarConfirmacao() {
         {erro && <MensagemErro texto={erro} />}
         {passouDoLimite && (
           <div className="grid grid-cols-2 gap-2">
-            <Botao variante="secundario" para="/meus-agendamentos">
+            <Botao para="/meus-agendamentos">
               <CalendarDays className="size-5" aria-hidden="true" />
               Horários
             </Botao>
@@ -519,7 +519,13 @@ function AgendarConfirmacao() {
             )}
           </div>
         )}
-        <Botao aoClicar={confirmar} carregando={confirmando} larguraTotal grande>
+        <Botao
+          variante={passouDoLimite ? 'secundario' : 'principal'}
+          aoClicar={confirmar}
+          carregando={confirmando}
+          larguraTotal
+          grande
+        >
           {confirmando ? 'Confirmando...' : original ? 'Confirmar remarcação' : 'Confirmar agendamento'}
         </Botao>
       </RodapeFixo>
