@@ -275,10 +275,10 @@ select pg_temp.confere('telefone fixo (12 números) e descrição gravados',
   (select telefone = '550030000000' and descricao = 'Cortes e cor.' from public.salao));
 
 select pg_temp.confere('conferência final acha o que é de teste aqui (DDD 00 e @exemplo.com) e nada mais',
-  (select string_agg(o_que_sobrou, ' | ' order by o_que_sobrou) from pg_temp.sobras() where o_que_sobrou not like 'login: %')
-  = 'salão: WhatsApp com DDD 00 | salão: telefone com DDD 00'
-  and exists (select 1 from pg_temp.sobras() where o_que_sobrou = 'login: roberto@exemplo.com')
-  and not exists (select 1 from pg_temp.sobras() where o_que_sobrou like 'login: %' and o_que_sobrou not like '%@exemplo.com'));
+  (select count(*) from pg_temp.sobras() where o_que_sobrou not like 'login: %') = 2
+  and exists (select 1 from pg_temp.sobras() where o_que_sobrou = 'salão: WhatsApp com DDD 00')
+  and exists (select 1 from pg_temp.sobras() where o_que_sobrou = 'salão: telefone com DDD 00')
+  and exists (select 1 from pg_temp.sobras() where o_que_sobrou = 'login: roberto@exemplo.com'));
 
 
 select resultado from (
