@@ -223,6 +223,63 @@ begin
   ) as s (id, nome, telefone, observacoes)
   where c.id = s.id and c.salao_id = '00000000-0000-4000-8000-000000000001';
 
+  delete from public.profissional_variacoes where salao_id = '00000000-0000-4000-8000-000000000001';
+  delete from public.servico_variacoes where salao_id = '00000000-0000-4000-8000-000000000001' and id > 9;
+  delete from public.servicos where salao_id = '00000000-0000-4000-8000-000000000001' and id > 12;
+
+  insert into public.categorias (id, salao_id, nome, ordem)
+  overriding system value values
+    (1, '00000000-0000-4000-8000-000000000001', 'Corte', 1),
+    (2, '00000000-0000-4000-8000-000000000001', 'Coloração', 2),
+    (3, '00000000-0000-4000-8000-000000000001', 'Escova', 3),
+    (4, '00000000-0000-4000-8000-000000000001', 'Tratamento', 4),
+    (5, '00000000-0000-4000-8000-000000000001', 'Barba', 5)
+  on conflict (id) do update set nome = excluded.nome, ordem = excluded.ordem;
+
+  insert into public.servicos (id, salao_id, categoria_id, nome, descricao, foto_url, duracao_min, preco, tipo_preco, ativo, ordem, criado_em)
+  overriding system value values
+    (1, '00000000-0000-4000-8000-000000000001', 1, 'Corte masculino', 'Corte na tesoura ou máquina, com lavagem.', null, 30, 45, 'fixo', true, 1, '2026-01-10T12:00:00Z'),
+    (2, '00000000-0000-4000-8000-000000000001', 1, 'Corte feminino', 'Corte com lavagem e finalização.', null, 60, 80, 'fixo', true, 2, '2026-01-10T12:00:00Z'),
+    (3, '00000000-0000-4000-8000-000000000001', 1, 'Corte infantil', 'Para crianças até 12 anos.', null, 30, 35, 'fixo', true, 3, '2026-01-10T12:00:00Z'),
+    (4, '00000000-0000-4000-8000-000000000001', 2, 'Tintura', 'Coloração completa. O preço muda com o tamanho do cabelo.', null, 90, 120, 'a_partir', true, 4, '2026-01-10T12:00:00Z'),
+    (5, '00000000-0000-4000-8000-000000000001', 2, 'Mechas', 'Luzes ou mechas. O valor é combinado depois de avaliar o cabelo.', null, 180, null, 'consulta', true, 5, '2026-01-10T12:00:00Z'),
+    (6, '00000000-0000-4000-8000-000000000001', 2, 'Retoque de raiz', 'Tintura só na raiz.', null, 60, 90, 'fixo', true, 6, '2026-01-10T12:00:00Z'),
+    (7, '00000000-0000-4000-8000-000000000001', 3, 'Escova', 'Escova modelada. O preço muda com o tamanho do cabelo.', null, 40, 50, 'a_partir', true, 7, '2026-01-10T12:00:00Z'),
+    (8, '00000000-0000-4000-8000-000000000001', 3, 'Escova progressiva', 'Alisamento que dura meses. O valor final depende do volume do cabelo.', null, 150, 200, 'a_partir', true, 8, '2026-01-10T12:00:00Z'),
+    (9, '00000000-0000-4000-8000-000000000001', 4, 'Hidratação', 'Hidratação profunda. O preço muda com o tamanho do cabelo.', null, 40, 60, 'a_partir', true, 9, '2026-01-10T12:00:00Z'),
+    (10, '00000000-0000-4000-8000-000000000001', 4, 'Cauterização', 'Reconstrução para cabelo danificado.', null, 90, 150, 'fixo', true, 10, '2026-01-10T12:00:00Z'),
+    (11, '00000000-0000-4000-8000-000000000001', 5, 'Barba', 'Barba com toalha quente e navalha.', null, 30, 35, 'fixo', true, 11, '2026-01-10T12:00:00Z'),
+    (12, '00000000-0000-4000-8000-000000000001', 5, 'Corte e barba', 'Corte masculino e barba juntos.', null, 60, 70, 'fixo', true, 12, '2026-01-10T12:00:00Z')
+  on conflict (id) do update set
+    categoria_id = excluded.categoria_id, nome = excluded.nome, descricao = excluded.descricao, foto_url = excluded.foto_url,
+    duracao_min = excluded.duracao_min, preco = excluded.preco, tipo_preco = excluded.tipo_preco,
+    ativo = excluded.ativo, ordem = excluded.ordem;
+
+  delete from public.categorias where salao_id = '00000000-0000-4000-8000-000000000001' and id > 5;
+
+  insert into public.servico_variacoes (id, salao_id, servico_id, nome, preco, duracao_min, ordem, ativa)
+  overriding system value values
+    (1, '00000000-0000-4000-8000-000000000001', 4, 'Curto', 120, 90, 1, true),
+    (2, '00000000-0000-4000-8000-000000000001', 4, 'Médio', 150, 110, 2, true),
+    (3, '00000000-0000-4000-8000-000000000001', 4, 'Longo', 190, 130, 3, true),
+    (4, '00000000-0000-4000-8000-000000000001', 7, 'Curto', 50, 40, 1, true),
+    (5, '00000000-0000-4000-8000-000000000001', 7, 'Médio', 65, 50, 2, true),
+    (6, '00000000-0000-4000-8000-000000000001', 7, 'Longo', 80, 60, 3, true),
+    (7, '00000000-0000-4000-8000-000000000001', 9, 'Curto', 60, 40, 1, true),
+    (8, '00000000-0000-4000-8000-000000000001', 9, 'Médio', 75, 50, 2, true),
+    (9, '00000000-0000-4000-8000-000000000001', 9, 'Longo', 90, 60, 3, true)
+  on conflict (id) do update set
+    servico_id = excluded.servico_id, nome = excluded.nome, preco = excluded.preco,
+    duracao_min = excluded.duracao_min, ordem = excluded.ordem, ativa = excluded.ativa;
+
+  delete from public.profissional_servicos where salao_id = '00000000-0000-4000-8000-000000000001';
+  insert into public.profissional_servicos (salao_id, profissional_id, servico_id, preco)
+  select '00000000-0000-4000-8000-000000000001', profissional_id, servico_id, null
+  from (values
+    (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 9), (1, 10), (1, 11), (1, 12),
+    (2, 1), (2, 2), (2, 3), (2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (2, 12)
+  ) as ligacoes (profissional_id, servico_id);
+
   delete from public.bloqueios
   where salao_id = '00000000-0000-4000-8000-000000000001'
     and id > (select min(b.id) from public.bloqueios b where b.salao_id = '00000000-0000-4000-8000-000000000001');
