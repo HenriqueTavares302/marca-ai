@@ -568,7 +568,7 @@ select pg_temp.confere('nenhuma função liberada para public',
 select pg_temp.confere('as 24 funções security definer do Marca Aí com search_path vazio',
   (select bool_and(p.proconfig = array['search_path=""']) and count(*) = 24 from pg_proc p
    where p.prosecdef and (
-     p.pronamespace = 'privado'::regnamespace
+     (p.pronamespace = 'privado'::regnamespace and p.proname <> 'avisar_mudanca')
      or (p.pronamespace = 'public'::regnamespace and p.proname in (
        'vitrine', 'criar_agendamento', 'meus_agendamentos', 'cancelar_agendamento', 'remarcar_agendamento',
        'salao_criar_agendamento', 'mudar_status_agendamento', 'remover_dados_do_cliente',

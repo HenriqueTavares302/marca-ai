@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import Card from '../../components/Card.jsx'
@@ -7,6 +7,7 @@ import Esqueleto from '../../components/Esqueleto.jsx'
 import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
 import { buscarResumo, listarProfissionaisAtivos } from '../../data/consultas.js'
 import { codigoDoProblema } from '../../data/supabase/erros.js'
+import { mudouAEquipe, useAvisosDoSalao } from '../../hooks/useAvisosDoSalao.js'
 import { formatarPreco } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo } from '../../utils/fuso.js'
 import { andarNoPeriodo, tiposDePeriodo } from '../../utils/resumo.js'
@@ -57,23 +58,33 @@ function Resumo() {
   const [ativos, setAtivos] = useState(null)
   const [erro, setErro] = useState(null)
   const [tentativa, setTentativa] = useState(0)
+  const [recarga, setRecarga] = useState(0)
+  const [versaoDaEquipe, setVersaoDaEquipe] = useState(0)
+  const recargaVista = useRef(0)
   const podeVerTodos = papelLogado() === 'dono' && (ativos === null || mostrarEscolhaDeProfissional('dono', ativos.length))
   const filtro = soEu || !podeVerTodos ? idLogado : null
   const chave = tipo + '|' + data + '|' + filtro
+
+  useAvisosDoSalao((tipos) => {
+    if (mudouAEquipe(tipos)) setVersaoDaEquipe((atual) => atual + 1)
+    setRecarga((atual) => atual + 1)
+  })
 
   useEffect(() => {
     async function carregarAtivos() {
       try {
         setAtivos(await listarProfissionaisAtivos())
       } catch {
-        setAtivos([])
+        setAtivos((atual) => atual || [])
       }
     }
     carregarAtivos()
-  }, [])
+  }, [versaoDaEquipe])
 
   useEffect(() => {
     let atual = true
+    const emSegundoPlano = recarga !== recargaVista.current
+    recargaVista.current = recarga
     async function carregar() {
       try {
         const dados = await buscarResumo(tipo, data, filtro)
@@ -82,14 +93,14 @@ function Resumo() {
           setErro(null)
         }
       } catch (problema) {
-        if (atual) setErro(codigoDoProblema(problema))
+        if (atual && !emSegundoPlano) setErro(codigoDoProblema(problema))
       }
     }
     carregar()
     return () => {
       atual = false
     }
-  }, [tipo, data, filtro, tentativa])
+  }, [tipo, data, filtro, tentativa, recarga])
 
   const carregado = resumo && resumo.chave === chave
   const noPeriodoAtual = carregado && hoje >= resumo.periodo.inicio && hoje <= resumo.periodo.fim

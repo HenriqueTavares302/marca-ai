@@ -231,3 +231,4 @@ export {
   salvarServico,
   verificarEncaixe,
 } from './salao.js'
+export { ouvirAvisosDoSalao } from './tempoReal.js'

@@ -20,6 +20,7 @@ import Esqueleto from '../../components/Esqueleto.jsx'
 import PainelDoAtendimento from '../../components/PainelDoAtendimento.jsx'
 import { buscarSalao, listarAgendaDoDia, listarProfissionaisAtivos } from '../../data/consultas.js'
 import { codigoDoProblema } from '../../data/supabase/erros.js'
+import { mudouAEquipe, useAvisosDoSalao } from '../../hooks/useAvisosDoSalao.js'
 import { montarLinhaDoTempo, resumirDia, textoDoValor, valorDoAgendamento } from '../../utils/agenda.js'
 import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
@@ -128,6 +129,8 @@ function Agenda() {
   })
   const [soEu, setSoEu] = useState(() => !(location.state && location.state.todos))
   const [versao, setVersao] = useState(0)
+  const [recarga, setRecarga] = useState(0)
+  const [versaoDaEquipe, setVersaoDaEquipe] = useState(0)
   const [dados, setDados] = useState(null)
   const [ativos, setAtivos] = useState(null)
   const [erro, setErro] = useState(null)
@@ -138,6 +141,7 @@ function Agenda() {
       : null,
   )
   const rolouParaAgora = useRef(false)
+  const recargaVista = useRef(0)
   const inicioDoToque = useRef(null)
 
   const agoraEmSaoPaulo = partesEmSaoPaulo(agora)
@@ -146,19 +150,26 @@ function Agenda() {
   const podeVerTodos = papelLogado() === 'dono' && (ativos === null || mostrarEscolhaDeProfissional('dono', ativos.length))
   const filtro = soEu || !podeVerTodos ? idLogado : null
 
+  useAvisosDoSalao((tipos) => {
+    if (mudouAEquipe(tipos)) setVersaoDaEquipe((atual) => atual + 1)
+    setRecarga((atual) => atual + 1)
+  })
+
   useEffect(() => {
     async function carregarAtivos() {
       try {
         setAtivos(await listarProfissionaisAtivos())
       } catch {
-        setAtivos([])
+        setAtivos((atual) => atual || [])
       }
     }
     carregarAtivos()
-  }, [])
+  }, [versaoDaEquipe])
 
   useEffect(() => {
     let atual = true
+    const emSegundoPlano = recarga !== recargaVista.current
+    recargaVista.current = recarga
     async function carregar() {
       try {
         const [dia, salao] = await Promise.all([listarAgendaDoDia(data, filtro), buscarSalao()])
@@ -167,14 +178,14 @@ function Agenda() {
           setErro(null)
         }
       } catch (problema) {
-        if (atual) setErro(codigoDoProblema(problema))
+        if (atual && !emSegundoPlano) setErro(codigoDoProblema(problema))
       }
     }
     carregar()
     return () => {
       atual = false
     }
-  }, [data, filtro, versao])
+  }, [data, filtro, versao, recarga])
 
   useEffect(() => {
     const relogio = setInterval(() => setAgora(Date.now()), 60000)

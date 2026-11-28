@@ -55,3 +55,4 @@ export const conferirCliente = (...argumentos) => escolher('conferirCliente')(..
 export const salvarCliente = (...argumentos) => escolher('salvarCliente')(...argumentos)
 export const removerDadosDoCliente = (...argumentos) => escolher('removerDadosDoCliente')(...argumentos)
 export const buscarResumo = (...argumentos) => escolher('buscarResumo')(...argumentos)
+export const ouvirAvisosDoSalao = (...argumentos) => escolher('ouvirAvisosDoSalao')(...argumentos)

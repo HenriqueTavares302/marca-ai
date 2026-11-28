@@ -229,6 +229,10 @@ export async function listarDatasAbertas(profissionalId, servicoIds, datas) {
   )
 }
 
+export function ouvirAvisosDoSalao() {
+  return () => {}
+}
+
 export async function listarDiasLotados() {
   return []
 }
