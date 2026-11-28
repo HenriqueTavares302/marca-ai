@@ -30,27 +30,7 @@ const chaveDoHorario = 'marca-ai:horario'
 const chaveDosDados = 'marca-ai:dados'
 const chaveDosDadosLembrados = 'marca-ai:cliente-lembrado'
 const chaveDoUltimoAgendamento = 'marca-ai:ultimo-agendamento'
-const chaveDosMeusAgendamentos = 'marca-ai:meus-agendamentos'
 const chaveDaRemarcacao = 'marca-ai:remarcacao'
-
-export function carregarMeusAgendamentos() {
-  try {
-    const salvo = JSON.parse(localStorage.getItem(chaveDosMeusAgendamentos))
-    return Array.isArray(salvo) ? salvo.filter((id) => Number.isInteger(id)) : []
-  } catch {
-    return []
-  }
-}
-
-export function adicionarMeuAgendamento(id) {
-  try {
-    const ids = carregarMeusAgendamentos()
-    if (!ids.includes(id)) ids.push(id)
-    localStorage.setItem(chaveDosMeusAgendamentos, JSON.stringify(ids))
-  } catch {
-    return
-  }
-}
 
 export function carregarRemarcacao() {
   const salvo = lerJson(sessionStorage, chaveDaRemarcacao)

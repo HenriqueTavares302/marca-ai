@@ -1,58 +1,41 @@
-import * as exemplo from './exemplo/consultas.js'
-import * as supabase from './supabase/consultas.js'
-import { fonteDeDados } from '../lib/fonte.js'
-
-function escolher(nome) {
-  return fonteDeDados() === 'supabase' && supabase[nome] ? supabase[nome] : exemplo[nome]
-}
-
-export const buscarSalao = (...argumentos) => escolher('buscarSalao')(...argumentos)
-export const listarProfissionais = (...argumentos) => escolher('listarProfissionais')(...argumentos)
-export const listarProfissionaisComServicos = (...argumentos) => escolher('listarProfissionaisComServicos')(...argumentos)
-export const listarHorariosLivres = (...argumentos) => escolher('listarHorariosLivres')(...argumentos)
-export const listarDatasAbertas = (...argumentos) => escolher('listarDatasAbertas')(...argumentos)
-export const listarDiasLotados = (...argumentos) => escolher('listarDiasLotados')(...argumentos)
-export const listarDiasEncerrados = (...argumentos) => escolher('listarDiasEncerrados')(...argumentos)
-export const buscarProfissional = (...argumentos) => escolher('buscarProfissional')(...argumentos)
-export const listarServicos = (...argumentos) => escolher('listarServicos')(...argumentos)
-export const buscarServico = (...argumentos) => escolher('buscarServico')(...argumentos)
-export const listarServicosPorCategoria = (...argumentos) => escolher('listarServicosPorCategoria')(...argumentos)
-export const listarServicosComVariacoes = (...argumentos) => escolher('listarServicosComVariacoes')(...argumentos)
-export const listarCategorias = (...argumentos) => escolher('listarCategorias')(...argumentos)
-export const listarServicosPopulares = (...argumentos) => escolher('listarServicosPopulares')(...argumentos)
-export const listarHorarioDoSalao = (...argumentos) => escolher('listarHorarioDoSalao')(...argumentos)
-export const listarVariacoes = (...argumentos) => escolher('listarVariacoes')(...argumentos)
-export const listarProfissionaisDoServico = (...argumentos) => escolher('listarProfissionaisDoServico')(...argumentos)
-export const listarServicosDoProfissional = (...argumentos) => escolher('listarServicosDoProfissional')(...argumentos)
-export const listarHorariosDoProfissional = (...argumentos) => escolher('listarHorariosDoProfissional')(...argumentos)
-export const listarBloqueiosDoDia = (...argumentos) => escolher('listarBloqueiosDoDia')(...argumentos)
-export const listarClientes = (...argumentos) => escolher('listarClientes')(...argumentos)
-export const buscarCliente = (...argumentos) => escolher('buscarCliente')(...argumentos)
-export const agendamentosDoDia = (...argumentos) => escolher('agendamentosDoDia')(...argumentos)
-export const agendamentosDoCliente = (...argumentos) => escolher('agendamentosDoCliente')(...argumentos)
-export const criarAgendamento = (...argumentos) => escolher('criarAgendamento')(...argumentos)
-export const listarMeusAgendamentos = (...argumentos) => escolher('listarMeusAgendamentos')(...argumentos)
-export const cancelarAgendamento = (...argumentos) => escolher('cancelarAgendamento')(...argumentos)
-export const remarcarAgendamento = (...argumentos) => escolher('remarcarAgendamento')(...argumentos)
-export const listarAgendaDoDia = (...argumentos) => escolher('listarAgendaDoDia')(...argumentos)
-export const atualizarStatusAgendamento = (...argumentos) => escolher('atualizarStatusAgendamento')(...argumentos)
-export const verificarEncaixe = (...argumentos) => escolher('verificarEncaixe')(...argumentos)
-export const listarServicosDoSalao = (...argumentos) => escolher('listarServicosDoSalao')(...argumentos)
-export const buscarServicoDoSalao = (...argumentos) => escolher('buscarServicoDoSalao')(...argumentos)
-export const listarProfissionaisAtivos = (...argumentos) => escolher('listarProfissionaisAtivos')(...argumentos)
-export const salvarServico = (...argumentos) => escolher('salvarServico')(...argumentos)
-export const alterarOrdemServico = (...argumentos) => escolher('alterarOrdemServico')(...argumentos)
-export const apagarServico = (...argumentos) => escolher('apagarServico')(...argumentos)
-export const conferirHorariosDoProfissional = (...argumentos) => escolher('conferirHorariosDoProfissional')(...argumentos)
-export const salvarHorariosDoProfissional = (...argumentos) => escolher('salvarHorariosDoProfissional')(...argumentos)
-export const listarBloqueiosFuturos = (...argumentos) => escolher('listarBloqueiosFuturos')(...argumentos)
-export const conflitosDoBloqueio = (...argumentos) => escolher('conflitosDoBloqueio')(...argumentos)
-export const criarBloqueio = (...argumentos) => escolher('criarBloqueio')(...argumentos)
-export const removerBloqueio = (...argumentos) => escolher('removerBloqueio')(...argumentos)
-export const listarClientesDoSalao = (...argumentos) => escolher('listarClientesDoSalao')(...argumentos)
-export const buscarFichaDoCliente = (...argumentos) => escolher('buscarFichaDoCliente')(...argumentos)
-export const conferirCliente = (...argumentos) => escolher('conferirCliente')(...argumentos)
-export const salvarCliente = (...argumentos) => escolher('salvarCliente')(...argumentos)
-export const removerDadosDoCliente = (...argumentos) => escolher('removerDadosDoCliente')(...argumentos)
-export const buscarResumo = (...argumentos) => escolher('buscarResumo')(...argumentos)
-export const ouvirAvisosDoSalao = (...argumentos) => escolher('ouvirAvisosDoSalao')(...argumentos)
+export {
+  alterarOrdemServico,
+  apagarServico,
+  atualizarStatusAgendamento,
+  buscarFichaDoCliente,
+  buscarProfissional,
+  buscarResumo,
+  buscarSalao,
+  buscarServicoDoSalao,
+  cancelarAgendamento,
+  conferirCliente,
+  conferirHorariosDoProfissional,
+  conflitosDoBloqueio,
+  criarAgendamento,
+  criarBloqueio,
+  listarAgendaDoDia,
+  listarBloqueiosFuturos,
+  listarCategorias,
+  listarClientes,
+  listarClientesDoSalao,
+  listarDatasAbertas,
+  listarDiasEncerrados,
+  listarDiasLotados,
+  listarHorarioDoSalao,
+  listarHorariosDoProfissional,
+  listarHorariosLivres,
+  listarMeusAgendamentos,
+  listarProfissionaisAtivos,
+  listarProfissionaisComServicos,
+  listarServicosComVariacoes,
+  listarServicosDoSalao,
+  listarServicosPopulares,
+  ouvirAvisosDoSalao,
+  remarcarAgendamento,
+  removerBloqueio,
+  removerDadosDoCliente,
+  salvarCliente,
+  salvarHorariosDoProfissional,
+  salvarServico,
+  verificarEncaixe,
+} from './supabase/consultas.js'

@@ -20,7 +20,6 @@ import {
 import { codigoDoProblema, mensagemDoErro } from '../../data/supabase/erros.js'
 import { limparCacheDaVitrine } from '../../data/supabase/vitrine.js'
 import {
-  adicionarMeuAgendamento,
   carregarDadosDoCliente,
   carregarRemarcacao,
   encerrarRemarcacao,
@@ -258,7 +257,6 @@ function AgendarConfirmacao() {
       return
     }
 
-    if (!resultado.guardadoNoAparelho) adicionarMeuAgendamento(resultado.agendamento.id)
     terminar(resultado.agendamento, false)
   }
 

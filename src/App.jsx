@@ -1,7 +1,6 @@
 import { Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom'
 import LayoutCliente from './layouts/LayoutCliente.jsx'
 import LayoutSalao from './layouts/LayoutSalao.jsx'
-import Componentes from './pages/Componentes.jsx'
 import NaoEncontrada from './pages/NaoEncontrada.jsx'
 import Agendar from './pages/cliente/Agendar.jsx'
 import AgendarConfirmacao from './pages/cliente/AgendarConfirmacao.jsx'
@@ -61,7 +60,6 @@ const rotas = createBrowserRouter(
         <Route path="resumo" element={<Resumo />} />
       </Route>
 
-      <Route path="/componentes" element={<Componentes />} />
       <Route path="*" element={<NaoEncontrada />} />
     </>,
   ),

@@ -27,7 +27,6 @@ import {
 import { codigoDoProblema, mensagemDoErro } from '../../data/supabase/erros.js'
 import { dispensarAvisoDosHorariosDeTeste, temAvisoDosHorariosDeTeste } from '../../data/supabase/meusCodigos.js'
 import {
-  carregarMeusAgendamentos,
   encerrarRemarcacao,
   iniciarRemarcacao,
   podeAlterarAgendamento,
@@ -208,7 +207,7 @@ function MeusAgendamentos() {
     async function carregar() {
       try {
         const [lista, salao, profissionais] = await Promise.all([
-          listarMeusAgendamentos(carregarMeusAgendamentos()),
+          listarMeusAgendamentos(),
           buscarSalao(),
           listarProfissionaisComServicos(),
         ])

@@ -174,7 +174,7 @@ export async function criarAgendamento(dados) {
   guardarMeuCodigo(resultado.dados.id, resultado.dados.codigo)
   const agendamento = traduzirAgendamento(resultado.dados, await vitrineSeDer())
   if (!agendamento) return { erro: 'erro_inesperado' }
-  return { agendamento, guardadoNoAparelho: true }
+  return { agendamento }
 }
 
 export async function listarMeusAgendamentos() {
