@@ -158,6 +158,10 @@ begin
 end;
 $$;
 
+select realtime.send('{"tipo":"teste"}'::jsonb, 'checagem', 'salao:checagem', true);
+select pg_temp.confere('realtime.send grava (se falhar: abra a Agenda logado uma vez, para o Realtime criar as partições de realtime.messages)',
+  exists (select 1 from realtime.messages m where m.topic = 'salao:checagem' and m.event = 'checagem'));
+
 select pg_temp.avisos();
 delete from pg_temp.do_teste;
 
@@ -241,12 +245,14 @@ select pg_temp.aceita('dono muda o intervalo da agenda do salão', 'authenticate
   $c$update public.salao set intervalo_minutos = 15 where id = '00000000-0000-4000-8000-000000000001'$c$);
 select pg_temp.avisou('... avisa "salao"', 'salao');
 
-select pg_temp.confere('todos os avisos: canal do salão, evento "mudou", privados e sem nenhum dado além do tipo',
+select pg_temp.confere('todos os avisos: canal do salão, evento "mudou", privados e só com o tipo e o id da mensagem',
   (select count(*) from pg_temp.do_teste) = 15
   and (select bool_and(
          m.topic = 'salao:00000000-0000-4000-8000-000000000001'
          and m.event = 'mudou' and m.private and m.extension = 'broadcast'
-         and m.payload = jsonb_build_object('tipo', m.payload ->> 'tipo'))
+         and jsonb_typeof(m.payload -> 'tipo') = 'string'
+         and (m.payload ->> 'id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+         and (select array_agg(k order by k) from jsonb_object_keys(m.payload) k) = array['id', 'tipo'])
        from realtime.messages m where m.id::text in (select id from pg_temp.do_teste)));
 
 select realtime.send('{"tipo":"agendamentos"}'::jsonb, 'mudou', 'salao:00000000-0000-4000-8000-000000000002', true);
