@@ -33,6 +33,8 @@ export {
   listarServicosComVariacoes,
   listarServicosDoSalao,
   listarServicosPopulares,
+  listarSituacaoDosDias,
+  listarSituacaoDosDiasDoSalao,
   ouvirAvisosDoSalao,
   remarcarAgendamento,
   removerBloqueio,

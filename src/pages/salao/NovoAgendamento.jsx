@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, CircleCheck, Clock, Plus, Search, Store, UserPlus, UserRound } from 'lucide-react'
+import { CalendarDays, Check, CircleCheck, Clock, Plus, Search, Store, UserPlus, UserRound } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
+import CalendarioDoMes from '../../components/CalendarioDoMes.jsx'
 import CampoTexto from '../../components/CampoTexto.jsx'
 import Chip from '../../components/Chip.jsx'
 import DiaDaFaixa from '../../components/DiaDaFaixa.jsx'
@@ -22,6 +23,7 @@ import {
   listarHorariosLivres,
   listarProfissionaisComServicos,
   listarServicosComVariacoes,
+  listarSituacaoDosDiasDoSalao,
   verificarEncaixe,
 } from '../../data/consultas.js'
 import { codigoDoProblema } from '../../data/supabase/erros.js'
@@ -42,14 +44,13 @@ import {
   formatarCelular,
   semAcento,
 } from '../../utils/cliente.js'
+import { diasDaFaixa, limiteDoBalcao, quantidadeDeDiasDaFaixa } from '../../utils/calendarioDoMes.js'
 import { formatarDataCurta, formatarDuracao } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo, instanteEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { formatarMinutos, minutosDaHora } from '../../utils/horariosLivres.js'
 import { mostrarAcimaDoRodape, rolarFaixaParaODia } from '../../utils/rolagem.js'
 import { precoParaMostrar } from '../../utils/precos.js'
 import { mostrarEscolhaDeProfissional, papelLogado, profissionalLogado } from '../../utils/sessao.js'
-
-const quantidadeDeDias = 21
 
 
 function lerParametros(params, hoje, idLogado) {
@@ -58,7 +59,7 @@ function lerParametros(params, hoje, idLogado) {
   const profissional = Number(params.get('profissional'))
   const clienteId = Number(params.get('cliente'))
   const dataValida =
-    /^\d{4}-\d{2}-\d{2}$/.test(data || '') && data >= hoje && data <= somarDias(hoje, quantidadeDeDias - 1)
+    /^\d{4}-\d{2}-\d{2}$/.test(data || '') && data >= hoje && data <= somarDias(hoje, quantidadeDeDiasDaFaixa - 1)
   const horaValida = /^\d{2}:\d{2}$/.test(hora || '') && minutosDaHora(hora) < 24 * 60
   return {
     data: dataValida ? data : hoje,
@@ -143,6 +144,10 @@ function NovoAgendamento() {
 
   const [profissionalId, setProfissionalId] = useState(inicial.profissionalId)
   const [diasAbertos, setDiasAbertos] = useState([])
+  const [inicioDaFaixa, setInicioDaFaixa] = useState(hoje)
+  const [calendarioAberto, setCalendarioAberto] = useState(false)
+  const limite = limiteDoBalcao(hoje)
+  const dias = diasDaFaixa(inicioDaFaixa, limite)
   const [data, setData] = useState(inicial.data)
   const [horarios, setHorarios] = useState(null)
   const [horario, setHorario] = useState(
@@ -183,11 +188,10 @@ function NovoAgendamento() {
 
   useEffect(() => {
     async function carregarDias() {
-      const proximosDias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
-      setDiasAbertos(await listarDatasAbertas(profissionalId, [], proximosDias))
+      setDiasAbertos(await listarDatasAbertas(profissionalId, [], diasDaFaixa(inicioDaFaixa, limiteDoBalcao(hoje))))
     }
     carregarDias().catch((problema) => setErroAoCarregar(codigoDoProblema(problema)))
-  }, [profissionalId, hoje])
+  }, [profissionalId, hoje, inicioDaFaixa])
 
   const resumo = base ? resumirEscolha(escolha, base.servicos, profissionalId) : resumirEscolha([], [])
   const servicoIds = resumo.itens.map((item) => item.servico.id)
@@ -337,6 +341,14 @@ function NovoAgendamento() {
     if (!diasAbertos.includes(novaData)) setMostrarEncaixe(true)
   }
 
+  function escolherNoCalendario(novaData, situacao) {
+    setCalendarioAberto(false)
+    if (!dias.includes(novaData)) setInicioDaFaixa(novaData)
+    setData(novaData)
+    if (horario && horario.data !== novaData) setHorario(null)
+    if (situacao !== 'livre') setMostrarEncaixe(true)
+  }
+
   async function conferirEncaixe() {
     if (!/^\d{2}:\d{2}$/.test(horaDoEncaixe)) {
       setEncaixe({ chave: chaveDoEncaixe, mensagem: 'Digite a hora do encaixe, como 15:10.' })
@@ -470,7 +482,6 @@ function NovoAgendamento() {
 
   const encontrados = filtrarClientes(base.clientes, busca).slice(0, 6)
   const servicosVisiveis = base.servicos.filter((servico) => semAcento(servico.nome).includes(semAcento(buscaServico).trim()))
-  const dias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
   const itemDoPainel = servicoDoPainel ? resumo.itens.find((item) => item.servico.id === servicoDoPainel.id) : null
   const mostrarErro = (chave) => (tentouAgendar ? erros[chave] : '')
 
@@ -622,6 +633,17 @@ function NovoAgendamento() {
       </Secao>
 
       <Secao id="secao-horario" numero="4" titulo="Dia e horário" erro={mostrarErro('horario')}>
+        {podeVerHorarios && (
+          <button
+            type="button"
+            onClick={() => setCalendarioAberto(true)}
+            aria-haspopup="dialog"
+            className="flex min-h-12 items-center gap-2 self-start px-1 font-semibold text-principal underline underline-offset-4"
+          >
+            <CalendarDays className="size-5" aria-hidden="true" />
+            Ver calendário
+          </button>
+        )}
         <div className="-mx-4">
           <FileiraRolavel rotulo="Dias" quantidade={dias.length}>
             {dias.map((dia) => (
@@ -789,6 +811,18 @@ function NovoAgendamento() {
           setServicoDoPainel(null)
         }}
         aoFechar={() => setServicoDoPainel(null)}
+      />
+
+      <CalendarioDoMes
+        aberto={calendarioAberto}
+        aoFechar={() => setCalendarioAberto(false)}
+        hoje={hoje}
+        limite={limite}
+        dataSelecionada={data}
+        balcao
+        chaveDosDias={JSON.stringify([profissionalId, chaveDosItens])}
+        carregarDias={(datas) => listarSituacaoDosDiasDoSalao(profissionalId, JSON.parse(chaveDosItens), datas)}
+        aoEscolher={escolherNoCalendario}
       />
 
       <Dialogo

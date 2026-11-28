@@ -143,6 +143,20 @@ export async function listarDiasEncerrados(profissionalId, itens, datas, remarca
   return (await diasSemVaga(profissionalId, itens, datas, remarcarId)).encerrados
 }
 
+export async function listarSituacaoDosDias(profissionalId, itens, datas, remarcarId = null) {
+  if (!itens || datas.length === 0) return []
+  const [dias, semVaga] = await Promise.all([
+    buscarDias(profissionalId, itens, datas, remarcarId),
+    diasSemVaga(profissionalId, itens, datas, remarcarId),
+  ])
+  return datas.map((data) => ({
+    data,
+    aberto: dias.some((dia) => dia.data === data && dia.aberto),
+    lotado: semVaga.lotados.includes(data),
+    encerrado: semVaga.encerrados.includes(data),
+  }))
+}
+
 export async function listarHorariosLivres(
   data,
   profissionalId,
@@ -231,6 +245,7 @@ export {
   listarHorariosEspeciais,
   listarProfissionaisAtivos,
   listarServicosDoSalao,
+  listarSituacaoDosDiasDoSalao,
   removerBloqueio,
   removerDadosDoCliente,
   salvarCliente,

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, Info, RotateCcw } from 'lucide-react'
+import { ArrowRight, CalendarDays, Info, RotateCcw } from 'lucide-react'
 import Botao from '../../components/Botao.jsx'
+import CalendarioDoMes from '../../components/CalendarioDoMes.jsx'
 import Card from '../../components/Card.jsx'
 import DiaDaFaixa from '../../components/DiaDaFaixa.jsx'
 import ErroAoCarregar from '../../components/ErroAoCarregar.jsx'
@@ -19,6 +20,7 @@ import {
   listarHorariosLivres,
   listarProfissionaisComServicos,
   listarServicosComVariacoes,
+  listarSituacaoDosDias,
 } from '../../data/consultas.js'
 import { codigoDoProblema } from '../../data/supabase/erros.js'
 import { limparCacheDaVitrine } from '../../data/supabase/vitrine.js'
@@ -36,13 +38,22 @@ import {
   textoDaFaixa,
   textoDoValorTotal,
 } from '../../utils/agendamento.js'
+import { diasDaFaixa, limiteDoCliente, quantidadeDeDiasDaFaixa } from '../../utils/calendarioDoMes.js'
 import { formatarDataCurta, formatarDataLonga } from '../../utils/formatos.js'
 import { hojeEmSaoPaulo, partesEmSaoPaulo, somarDias } from '../../utils/fuso.js'
 import { destinoDoErro } from '../../utils/errosDoAgendamento.js'
 import { formatarMinutos } from '../../utils/horariosLivres.js'
 import { mostrarHorarioEscolhido, rolarFaixaParaODia } from '../../utils/rolagem.js'
 
-const quantidadeDeDias = 21
+async function carregarFaixa(inicio, limite, profissionalId, servicoIds, itens, ignorarAgendamentoId) {
+  const dias = diasDaFaixa(inicio, limite)
+  const [diasAbertos, lotados, encerrados] = await Promise.all([
+    listarDatasAbertas(profissionalId, servicoIds, dias, itens, ignorarAgendamentoId),
+    listarDiasLotados(profissionalId, itens, dias, ignorarAgendamentoId),
+    listarDiasEncerrados(profissionalId, itens, dias, ignorarAgendamentoId),
+  ])
+  return { dias, diasAbertos, lotados, encerrados }
+}
 
 async function buscarDiaComVaga(dias, aPartirDe, dados) {
   for (let indice = aPartirDe; indice < dias.length; indice++) {
@@ -90,6 +101,7 @@ function AgendarHorario() {
   const [escolhido, setEscolhido] = useState(null)
   const [aviso, setAviso] = useState('')
   const [semVagaNaFaixa, setSemVagaNaFaixa] = useState(false)
+  const [calendarioAberto, setCalendarioAberto] = useState(false)
   const [erro, setErro] = useState(null)
   const [tentativa, setTentativa] = useState(0)
   const [erroDosHorarios, setErroDosHorarios] = useState(null)
@@ -123,30 +135,36 @@ function AgendarHorario() {
       if (idSalvo !== null && !profissional) salvarProfissional(null)
 
       const hoje = hojeEmSaoPaulo()
-      const dias = Array.from({ length: quantidadeDeDias }, (_, indice) => somarDias(hoje, indice))
+      const limite = limiteDoCliente(hoje)
       const profissionalId = profissional ? profissional.id : null
       const servicoIds = resumo.itens.map((item) => item.servico.id)
       const itens = itensParaOBanco(resumo)
       const remarcacao = carregarRemarcacao()
       const ignorarAgendamentoId = remarcacao ? remarcacao.agendamentoId : null
-      const [diasAbertos, lotados, encerrados] = await Promise.all([
-        listarDatasAbertas(profissionalId, servicoIds, dias, itens, ignorarAgendamentoId),
-        listarDiasLotados(profissionalId, itens, dias, ignorarAgendamentoId),
-        listarDiasEncerrados(profissionalId, itens, dias, ignorarAgendamentoId),
-      ])
+      const salvo = carregarHorario()
+      const salvoDepoisDaFaixa =
+        salvo && salvo.data > somarDias(hoje, quantidadeDeDiasDaFaixa - 1) && salvo.data <= limite
+      const faixa = await carregarFaixa(
+        salvoDepoisDaFaixa ? salvo.data : hoje,
+        limite,
+        profissionalId,
+        servicoIds,
+        itens,
+        ignorarAgendamentoId,
+      )
+      const dias = faixa.dias
+      const diasAbertos = faixa.diasAbertos
       const novosDados = {
         resumo,
         escolha: carregarEscolha(),
         servicos,
         hoje,
-        dias,
+        limite,
+        ...faixa,
         possiveis,
         profissionalId,
         servicoIds,
         itens,
-        diasAbertos,
-        lotados,
-        encerrados,
         duracao: resumo.duracaoTotal,
         nomeDoProfissional: profissional ? profissional.nome : 'Qualquer profissional',
         nomes: Object.fromEntries(profissionais.map((item) => [item.id, item.nome])),
@@ -155,7 +173,6 @@ function AgendarHorario() {
       }
 
       let dataInicial = null
-      const salvo = carregarHorario()
       if (salvo && possiveis.length > 0) {
         const livres = await listarHorariosLivres(
           salvo.data,
@@ -239,6 +256,30 @@ function AgendarHorario() {
     const novo = { data: dataSelecionada, minutos: horario.minutos, profissionalId: horario.profissionalId }
     setEscolhido(novo)
     salvarHorario(novo)
+  }
+
+  async function escolherNoCalendario(data) {
+    setCalendarioAberto(false)
+    setSemVagaNaFaixa(false)
+    if (dados.dias.includes(data)) {
+      setDataSelecionada(data)
+      return
+    }
+    try {
+      const faixa = await carregarFaixa(
+        data,
+        dados.limite,
+        dados.profissionalId,
+        dados.servicoIds,
+        dados.itens,
+        dados.ignorarAgendamentoId,
+      )
+      setDados({ ...dados, ...faixa })
+      setDataSelecionada(data)
+    } catch (problema) {
+      const codigo = codigoDoProblema(problema)
+      if (!mandarDeVolta(codigo, navegar)) setErroDosHorarios(codigo)
+    }
   }
 
   async function verProximoDiaComVaga() {
@@ -330,7 +371,18 @@ function AgendarHorario() {
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-2xl font-semibold">Escolha o dia</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-2xl font-semibold">Escolha o dia</h2>
+          <button
+            type="button"
+            onClick={() => setCalendarioAberto(true)}
+            aria-haspopup="dialog"
+            className="flex min-h-12 items-center gap-2 px-1 font-semibold text-principal underline underline-offset-4"
+          >
+            <CalendarDays className="size-5" aria-hidden="true" />
+            Ver calendário
+          </button>
+        </div>
         <div className="-mx-4">
           <FileiraRolavel rotulo="Dias" quantidade={dados.dias.length}>
             {dados.dias.map((data) => (
@@ -368,9 +420,16 @@ function AgendarHorario() {
           <Card>
             <p className="font-semibold">Sem horários livres neste dia.</p>
             {semVagaNaFaixa ? (
-              <p className="text-texto-suave">
-                Não encontramos vagas nos próximos {quantidadeDeDias} dias. Fale com o salão pelo WhatsApp.
-              </p>
+              <>
+                <p className="text-texto-suave">
+                  Não encontramos vagas até {formatarDataCurta(dados.dias[dados.dias.length - 1])}. Veja outros dias no
+                  calendário ou fale com o salão pelo WhatsApp.
+                </p>
+                <Botao variante="secundario" larguraTotal aoClicar={() => setCalendarioAberto(true)}>
+                  <CalendarDays className="size-5" aria-hidden="true" />
+                  Ver calendário
+                </Botao>
+              </>
             ) : (
               <Botao variante="secundario" larguraTotal aoClicar={verProximoDiaComVaga}>
                 Ver o próximo dia com vaga
@@ -388,6 +447,17 @@ function AgendarHorario() {
           />
         )}
       </section>
+
+      <CalendarioDoMes
+        aberto={calendarioAberto}
+        aoFechar={() => setCalendarioAberto(false)}
+        hoje={dados.hoje}
+        limite={dados.limite}
+        dataSelecionada={dataSelecionada}
+        chaveDosDias={JSON.stringify([dados.profissionalId, dados.itens, dados.ignorarAgendamentoId])}
+        carregarDias={(datas) => listarSituacaoDosDias(dados.profissionalId, dados.itens, datas, dados.ignorarAgendamentoId)}
+        aoEscolher={(data) => escolherNoCalendario(data)}
+      />
 
       <RodapeFixo>
         {escolhido ? (

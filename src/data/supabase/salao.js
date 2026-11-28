@@ -12,7 +12,7 @@ import { montarResumo, periodoDoResumo } from '../../utils/resumo.js'
 import { errosDoServico, temErros } from '../../utils/servico.js'
 import { ErroDosDados } from './erros.js'
 import { executar } from './executar.js'
-import { traduzirHorariosLivres } from './traducoes.js'
+import { traduzirDias, traduzirHorariosLivres } from './traducoes.js'
 import { buscarVitrine, limparCacheDaVitrine } from './vitrine.js'
 
 export const colunasDoAgendamento =
@@ -225,6 +225,27 @@ export async function listarDatasAbertasDoSalao(profissionalId, datas) {
       return atende && !bloqueadoODia
     }),
   )
+}
+
+export async function listarSituacaoDosDiasDoSalao(profissionalId, itens, datas) {
+  if (!itens || itens.length === 0 || datas.length === 0) return []
+  const filtro = await filtroDoProfissional(profissionalId)
+  const ordenadas = [...datas].sort()
+  const dias = traduzirDias(
+    await ler((c) =>
+      c.rpc('salao_dias_abertos', {
+        p_itens: itens,
+        p_profissional_id: filtro,
+        p_de: ordenadas[0],
+        p_ate: ordenadas[ordenadas.length - 1],
+      }),
+    ),
+  )
+  return datas.map((data) => {
+    const dia = dias.find((item) => item.data === data)
+    const aberto = Boolean(dia && dia.aberto)
+    return { data, aberto, lotado: aberto && !dia.temHorarioLivre, encerrado: false }
+  })
 }
 
 export async function criarAgendamentoNoSalao({ nome, telefone, profissionalId, inicio, itens, observacoes, formaPagamento }) {
